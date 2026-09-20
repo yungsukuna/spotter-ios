@@ -1,18 +1,33 @@
 import SwiftData
 import SwiftUI
 
-/// Placeholder root for the Today tab.
+/// Root of the Today tab — a read-mostly dashboard summarising nutrition,
+/// water and workouts, plus a 7-day strip.
 ///
-/// Owned by workstream C. Replace this file's body with the real
-/// implementation; keep the type name so `RootTabView` keeps compiling.
+/// Self-contained by design: it reads `DiaryEntry`, `WaterEntry` and
+/// `Workout` directly rather than importing the Nutrition or Workouts tabs'
+/// own view types, which belong to other workstreams. Every card degrades to
+/// a plain empty-state message when its section has no data for the day.
 struct TodayView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Query private var settingsList: [UserSettings]
+
+    private var settings: UserSettings {
+        settingsList.first ?? UserSettings.current(in: modelContext)
+    }
+
     var body: some View {
         NavigationStack {
-            ContentUnavailableView(
-                "Today",
-                systemImage: "square.grid.2x2",
-                description: Text("Not built yet — workstream C.")
-            )
+            ScrollView {
+                VStack(spacing: Theme.Spacing.lg) {
+                    NutritionSummaryCard(goal: settings.nutritionGoal)
+                    WaterSummaryCard(goalML: settings.dailyWaterGoalML, unit: settings.volumeUnit)
+                    WorkoutSummaryCard(weightUnit: settings.weightUnit)
+                    WeeklyStripCard(kcalGoal: settings.dailyKcalGoal, waterGoalML: settings.dailyWaterGoalML)
+                }
+                .padding(Theme.Spacing.lg)
+            }
+            .background(Theme.Colors.groupedBackground)
             .navigationTitle("Today")
         }
     }
