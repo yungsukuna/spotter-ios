@@ -37,21 +37,27 @@ private struct AddFoodDestination: Identifiable {
 /// calorie figure would silently contribute nothing to the day's total, which
 /// is worse than asking the user to type in what's on the label.
 ///
-/// Barcode scanning is owned by a different workstream. This screen only
-/// exposes the hook: ``onScanRequested``. When nil (e.g. in previews, or
-/// until that workstream lands), tapping the scan button shows a placeholder
-/// explanation instead of doing nothing.
+/// Barcode scanning is built in: the scan button presents ``BarcodeScannerView``,
+/// looks the code up through ``CachingFoodRepository``, and routes to the
+/// portion picker or to ``CustomFoodEditorView`` when the product is unknown.
+/// ``onScanRequested`` remains as an override for tests and previews that
+/// want to stub the camera out.
 struct AddFoodView: View {
     let meal: Meal
     var onScanRequested: (() -> Void)?
 
     @Environment(\.appEnvironment) private var appEnvironment
+    @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
     @State private var tab: AddFoodTab = .search
     @State private var searchModel: FoodSearchModel?
     @State private var destination: AddFoodDestination?
-    @State private var showingScannerPlaceholder = false
+    @State private var showingScanner = false
+    @State private var isLookingUpBarcode = false
+    @State private var lastScannedBarcode: String?
+    @State private var pendingScanResult: ScannedProductResult?
+    @State private var scanError: FoodDataError?
 
     @Query(
         filter: #Predicate<FoodItem> { $0.lastUsedAt != nil },
@@ -118,6 +124,28 @@ struct AddFoodView: View {
                     )
                 }
             }
+            .alert(
+                "Couldn't Look Up Barcode",
+                isPresented: Binding(
+                    get: { scanError != nil },
+                    set: { if !$0 { scanError = nil } }
+                ),
+                presenting: scanError
+            ) { error in
+                if error.suggestedAction == .retry {
+                    Button("Retry") {
+                        if let lastScannedBarcode {
+                            Task { await lookupScannedBarcode(lastScannedBarcode) }
+                        }
+                    }
+                }
+                Button("Enter Manually") {
+                    openCustomEntry(name: "", brand: nil, barcode: lastScannedBarcode)
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: { error in
+                Text(error.userMessage)
+            }
             .task {
                 if searchModel == nil {
                     searchModel = FoodSearchModel(dataSource: appEnvironment.foodDataSource)
@@ -150,7 +178,7 @@ struct AddFoodView: View {
                 if let onScanRequested {
                     onScanRequested()
                 } else {
-                    showingScannerPlaceholder = true
+                    showingScanner = true
                 }
             } label: {
                 Label("Scan Barcode", systemImage: "barcode.viewfinder")
@@ -158,10 +186,8 @@ struct AddFoodView: View {
             }
             .buttonStyle(.bordered)
             .padding(.horizontal, Theme.Spacing.lg)
-            .alert("Not Available Yet", isPresented: $showingScannerPlaceholder) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text("Barcode scanning is being built separately and will appear here.")
+            .sheet(isPresented: $showingScanner, onDismiss: applyPendingScanResult) {
+                scannerSheet
             }
 
             searchResultsList
@@ -200,15 +226,88 @@ struct AddFoodView: View {
 
     private func select(_ record: FoodRecord) {
         if record.lacksNutrition {
-            destination = AddFoodDestination(kind: .customEntry(
-                existingFood: nil,
-                name: record.name,
-                brand: record.brand,
-                barcode: record.barcode
-            ))
+            openCustomEntry(name: record.name, brand: record.brand, barcode: record.barcode)
         } else {
             destination = AddFoodDestination(kind: .detail(.record(record)))
         }
+    }
+
+    // MARK: - Barcode scan
+
+    private var scannerSheet: some View {
+        NavigationStack {
+            ZStack {
+                BarcodeScannerView { barcode in
+                    Task { await lookupScannedBarcode(barcode) }
+                }
+                if isLookingUpBarcode {
+                    ProgressView("Looking up…")
+                        .padding(Theme.Spacing.lg)
+                        .background(.ultraThinMaterial)
+                        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous))
+                }
+            }
+            .navigationTitle("Scan Barcode")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { showingScanner = false }
+                }
+            }
+        }
+    }
+
+    @MainActor
+    private func lookupScannedBarcode(_ barcode: String) async {
+        guard !isLookingUpBarcode else { return }
+        isLookingUpBarcode = true
+        lastScannedBarcode = barcode
+        let repository = CachingFoodRepository(
+            remote: appEnvironment.foodDataSource,
+            context: modelContext
+        )
+        let result = await ScannedProductLookup.resolve(barcode: barcode, using: repository)
+        pendingScanResult = result
+        isLookingUpBarcode = false
+        if showingScanner {
+            showingScanner = false
+        } else {
+            applyPendingScanResult()
+        }
+    }
+
+    private func applyPendingScanResult() {
+        guard let pendingScanResult else { return }
+        self.pendingScanResult = nil
+        switch pendingScanResult {
+        case .product(let item):
+            destination = AddFoodDestination(kind: .detail(.existing(item)))
+        case .missingNutrition(let item):
+            openCustomEntry(name: item.name, brand: item.brand, barcode: item.barcode, existingFood: item)
+        case .notFound(let barcode):
+            openCustomEntry(name: "", brand: nil, barcode: barcode)
+        case .failed(let error):
+            switch error.suggestedAction {
+            case .manualEntry:
+                openCustomEntry(name: "", brand: nil, barcode: lastScannedBarcode)
+            case .retry, .explainConfiguration:
+                scanError = error
+            }
+        }
+    }
+
+    private func openCustomEntry(
+        name: String,
+        brand: String?,
+        barcode: String?,
+        existingFood: FoodItem? = nil
+    ) {
+        destination = AddFoodDestination(kind: .customEntry(
+            existingFood: existingFood,
+            name: name,
+            brand: brand,
+            barcode: barcode
+        ))
     }
 
     // MARK: - My Foods tab

@@ -24,20 +24,21 @@ struct DayTotals: Hashable {
         self.goal = goal
     }
 
-    /// Calories left to eat today. Nil when either side is unknown, which
-    /// keeps a day containing a food with no calorie figure from producing a
-    /// misleadingly precise "remaining" number.
+    /// Calories left to eat today. Uses ``Nutrients/effectiveKcal`` so a food
+    /// with macros but no stated calorie figure still counts, matching the
+    /// Today tab. Nil only when even the Atwater estimate is unavailable.
     var kcalRemaining: Double? {
-        guard let goalKcal = goal.kcal, let consumedKcal = consumed.kcal else { return nil }
+        guard let goalKcal = goal.kcal, let consumedKcal = consumed.effectiveKcal else { return nil }
         return goalKcal - consumedKcal
     }
 
     /// Progress toward the calorie goal, clamped to `0...1` for a progress bar.
+    /// Uses ``Nutrients/effectiveKcal`` so this matches
+    /// ``DashboardAggregation.NutritionSummary/kcalFraction`` for the same day.
     /// Zero rather than crashing or NaN-ing when the goal is unset or zero.
     var kcalProgress: Double {
-        guard let goalKcal = goal.kcal, goalKcal > 0, let consumedKcal = consumed.kcal else {
-            return 0
-        }
+        guard let goalKcal = goal.kcal, goalKcal > 0 else { return 0 }
+        guard let consumedKcal = consumed.effectiveKcal else { return 0 }
         return min(max(consumedKcal / goalKcal, 0), 1)
     }
 }

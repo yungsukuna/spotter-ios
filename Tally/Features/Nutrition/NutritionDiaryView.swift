@@ -202,7 +202,7 @@ private struct DayTotalsCard: View {
         VStack(alignment: .leading, spacing: Theme.Spacing.md) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
-                    Text(Format.energy(totals.consumed.kcal))
+                    Text(Format.energy(totals.consumed.effectiveKcal))
                         .font(Theme.Typography.metric)
                     Text("of \(Format.energy(totals.goal.kcal)) goal")
                         .font(Theme.Typography.caption)

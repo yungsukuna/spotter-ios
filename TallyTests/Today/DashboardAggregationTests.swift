@@ -32,6 +32,15 @@ struct DashboardAggregationTests {
         #expect(summary.kcalFraction == 0)
     }
 
+    @Test("Kcal fraction uses effectiveKcal so a macros-only food still counts")
+    func kcalFractionUsesEffectiveKcal() {
+        let summary = DashboardAggregation.NutritionSummary(
+            consumed: Nutrients(kcal: nil, proteinG: 25, carbsG: 0, fatG: 0),
+            goal: Nutrients(kcal: 1000)
+        )
+        #expect(abs(summary.kcalFraction - 0.1) < 0.0001)
+    }
+
     @Test("Kcal fraction is zero when the goal is unset, not a division-by-zero crash")
     func kcalFractionGuardsMissingGoal() {
         let summary = DashboardAggregation.NutritionSummary(consumed: Nutrients(kcal: 500), goal: Nutrients())

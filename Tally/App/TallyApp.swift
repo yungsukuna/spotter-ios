@@ -17,9 +17,12 @@ struct TallyApp: App {
             fatalError("Could not open the Tally data store: \(error)")
         }
 
-        // Real networking is wired up in Phase 2; until then the app runs
-        // against the mock catalogue.
-        _appEnvironment = State(initialValue: AppEnvironment(foodDataSource: MockFoodDataSource()))
+        let settings = UserSettings.current(in: modelContainer.mainContext)
+        let foodDataSource = CompositeFoodDataSource(
+            openFoodFacts: OpenFoodFactsClient(contact: settings.openFoodFactsContact),
+            usda: USDAFoodDataCentralClient()
+        )
+        _appEnvironment = State(initialValue: AppEnvironment(foodDataSource: foodDataSource))
     }
 
     var body: some Scene {

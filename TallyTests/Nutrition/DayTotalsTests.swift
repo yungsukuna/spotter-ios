@@ -74,6 +74,34 @@ struct DayTotalsTests {
         #expect(zeroGoal.kcalProgress == 0)
     }
 
+    @Test("Progress uses effectiveKcal so a macros-only food is not dropped")
+    func progressUsesEffectiveKcal() {
+        // 10 g protein + 10 g carbs + 10 g fat → 40 + 40 + 90 = 170 kcal Atwater.
+        let totals = DayTotals(
+            consumed: Nutrients(kcal: nil, proteinG: 10, carbsG: 10, fatG: 10),
+            goal: Nutrients(kcal: 1700)
+        )
+        #expect(abs(totals.kcalProgress - 0.1) < 0.0001)
+    }
+
+    @Test("Remaining uses effectiveKcal when stated kcal is unknown")
+    func remainingUsesEffectiveKcal() {
+        let totals = DayTotals(
+            consumed: Nutrients(kcal: nil, proteinG: 10, carbsG: 10, fatG: 10),
+            goal: Nutrients(kcal: 2000)
+        )
+        #expect(totals.kcalRemaining == 1830)
+    }
+
+    @Test("Food-tab progress matches Today-tab fraction for a macros-only day")
+    func progressAgreesWithDashboardOnEffectiveKcal() {
+        let consumed = Nutrients(kcal: nil, proteinG: 25, carbsG: 0, fatG: 0)
+        let goal = Nutrients(kcal: 1000)
+        let day = DayTotals(consumed: consumed, goal: goal)
+        let dash = DashboardAggregation.NutritionSummary(consumed: consumed, goal: goal)
+        #expect(day.kcalProgress == dash.kcalFraction)
+    }
+
     @Test("Quantity scaling feeds correctly into the day total")
     func scaledQuantityAffectsTotal() {
         let food = FoodItem(name: "Chicken", nutrientsPer100g: Nutrients(kcal: 120, proteinG: 22.5))

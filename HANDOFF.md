@@ -1,6 +1,6 @@
 # Handoff
 
-Written 2026-09-20 by the session that scaffolded this repo. Read `CLAUDE.md` first for the
+Updated 2026-09-20 after the session that picked this up. Read `CLAUDE.md` first for the
 conventions, then this for where things actually stand.
 
 ---
@@ -11,9 +11,8 @@ conventions, then this for where things actually stand.
 compiled or run locally. The macOS GitHub Actions runner is the *only* verification that exists, and it
 takes 4–5 minutes per run.
 
-That shapes the whole workflow. Every remaining task in this document is a compile error that CI found.
-The loop is: read the CI annotations, fix, push, wait, repeat. Do not guess at a fix and move on — push
-it and confirm.
+That shapes the whole workflow. The loop is: read the CI annotations (and the test log, once the
+build is passing), fix, push, wait, repeat. Do not guess at a fix and move on — push it and confirm.
 
 Kai has a Mac, so the faster loop is available if he's at it: `xcodegen generate && open Tally.xcodeproj`
 surfaces every error at once instead of one CI round-trip at a time. **Ask before assuming he'll do
@@ -25,8 +24,6 @@ that** — he hasn't opened the project in Xcode yet at time of writing.
 
 Repo: **https://github.com/yungsukuna/tally-ios** (public), local at `C:\Users\Kai\Documents\GitHub\tally-ios`.
 
-9 commits, ~10,000 lines, working tree clean, everything pushed.
-
 `gh` CLI is installed at `C:\Program Files\GitHub CLI\gh.exe` and authenticated as **yungsukuna** with
 `repo` + `workflow` scopes. **It is not on PATH in the Bash tool** — invoke it by full path:
 
@@ -34,17 +31,32 @@ Repo: **https://github.com/yungsukuna/tally-ios** (public), local at `C:\Users\K
 GH="/c/Program Files/GitHub CLI/gh.exe"; "$GH" run list --limit 3
 ```
 
-### CI status: RED
+On PowerShell:
 
-Last green run was `35489393682` (nutrition + water/today/settings, 126 tests). Everything since has
-failed on Swift 6 strict-concurrency errors in the newer layers.
-
-Run `35490027126` was in flight when this was written — it carries a fix for the
-`CachingFoodRepositoryTests` failure below. **Check it first.**
-
-```bash
-GH="/c/Program Files/GitHub CLI/gh.exe"; "$GH" run list --limit 3
+```powershell
+& "C:\Program Files\GitHub CLI\gh.exe" run list --limit 3
 ```
+
+### CI status
+
+Run `35490081444` (handoff-notes commit) **compiled the workouts layer for the first time** and ran
+218 tests. The `#require` caching-test fix held. Five assertions failed, all test bugs rather than
+product bugs:
+
+- `RestTimerController.start` always cancels before scheduling, so a later `addTime` / `skip` makes
+  `cancelledIdentifiers.count == 2`, not 1.
+- `WorkoutStatsCalculatorTests.logSession` called `complete()` with the default `Date()`, so every
+  historical set stamped as today and `groupedByDay` collapsed two sessions into one point of 1025 kg.
+
+Those tests are fixed. Remaining handoff items also landed in the same push:
+
+- Food-tab `DayTotals` now uses `effectiveKcal`, matching the Today tab.
+- `TallyApp` wires `OpenFoodFactsClient` + `USDAFoodDataCentralClient` through `CompositeFoodDataSource`.
+- `AddFoodView` presents `BarcodeScannerView`, looks up via `CachingFoodRepository`, and routes to
+  the portion picker or `CustomFoodEditorView` (`ScannedProductLookup`).
+- `actions/checkout@v5`.
+
+**Confirm the run that follows this push is green before starting anything new.**
 
 ---
 
@@ -74,74 +86,27 @@ report earlier in the session. Use:
 
 ## Known remaining work
 
-### 1. Verify the in-flight fix (do this first)
+### 1. Confirm this push is green (do this first)
 
-Run `35490027126` tests a fix to `TallyTests/Services/CachingFoodRepositoryTests.swift:93`.
-`CachingFoodRepository` is `@MainActor` (because `ModelContext` isn't Sendable), so
-`product(barcode:)` returns a main-actor-isolated, non-Sendable `FoodItem`. Letting the
-`#require(throws:)` closure return it made the macro hand it back as a `sending` result. Fixed by
-discarding with `_ =`. If CI is green, this section is done.
+The previous run compiled and ran 218 tests; the five failures were test-expectation mismatches,
+now fixed, plus the remaining integration work. If the new run is red, read the annotations (filter
+CoreData noise — see below) and the test log, not `gh run view --log-failed` alone.
 
-### 2. The workouts layer has never had a clean compile
+### 2. Workouts compiled once, still never rendered
 
-This is the biggest open risk. `Tally/Features/Workouts/` is **3,100 lines across 35 files** and has
-never once passed a build — every run since it landed has aborted on errors in *other* files before
-reaching it, or failed on the test target. It may be entirely fine, or it may have a queue of errors
-behind the ones already fixed. Assume the latter until a run goes green.
+`Tally/Features/Workouts/` compiled on run `35490081444`. Charts, optional-enum pickers, and
+`EditButton` / `.onMove` did not fail the build. That is a compile bar, not a visual one. Nothing in
+this app has ever been seen on a device or simulator UI.
 
-The workouts agent flagged these as its least-certain areas:
-- Swift Charts `Chart`/`LineMark`/`PointMark` usage in `Views/ExerciseStatsView.swift`
-- `Picker(selection: Optional<Enum>)` with `.tag(Enum?.some(x))` / `.tag(Enum?.none)` in
-  `Views/ExercisePickerView.swift`
-- `EditButton()` / `.onMove` inside a `Form` in `Views/RoutineEditorView.swift`
+### 3. Smaller items
 
-### 3. Known cross-workstream inconsistency (real bug, not a compile error)
-
-`DayTotals.kcalProgress` (`Features/Nutrition/DayTotals.swift`) uses `consumed.kcal`.
-`DashboardAggregation.NutritionSummary.kcalFraction` (`Features/Today/DashboardAggregation.swift`) uses
-`consumed.effectiveKcal`.
-
-For a food with macros but no stated calorie figure, **the Food tab and the Today tab will show
-different progress for the same day.** Two agents built these in parallel and couldn't see each other's
-code. Pick one — `effectiveKcal` is the better default, since it uses the Atwater estimate rather than
-silently dropping the food — and make both match.
-
-### 4. `AppEnvironment` still uses the mock
-
-`Tally/App/TallyApp.swift` constructs `AppEnvironment(foodDataSource: MockFoodDataSource())`. The real
-clients exist and are tested but **are not wired in**, so barcode scanning and search currently return
-sample data.
-
-The wiring, once the build is green:
-
-```swift
-let settings = UserSettings.current(in: modelContainer.mainContext)
-let off = OpenFoodFactsClient(contact: settings.openFoodFactsContact)
-let usda = USDAFoodDataCentralClient()          // no-ops to .missingAPIKey when unconfigured
-let composite = CompositeFoodDataSource(openFoodFacts: off, usda: usda)
-```
-
-Then wrap in `CachingFoodRepository` for barcode lookups. Check the actual initialiser signatures in
-`Tally/Services/Food/` — don't trust the sketch above verbatim.
-
-### 5. Scanner isn't connected to the nutrition UI
-
-`AddFoodView` exposes `onScanRequested: (() -> Void)?` and shows a placeholder alert when it's nil.
-`BarcodeScannerView` in `Tally/Services/Scanning/` exposes `onScan: (String) -> Void`. Nobody joins
-them. The two agents worked in parallel and neither could reach across.
-
-Flow to build: scan → barcode string → `CachingFoodRepository.product(barcode:)` → on
-`.productNotFound`, push `CustomFoodEditorView` with the barcode prefilled (it already accepts
-`prefilledBarcode`).
-
-### 6. Smaller items
-
-- `actions/checkout@v4` throws a Node 20 deprecation warning. Bump to `@v5`.
 - Two `AVCaptureSession` non-Sendable capture **warnings** remain in
   `MetadataCaptureScannerRepresentable.swift`. Non-blocking. `nonisolated(unsafe)` on the property
   didn't silence them; properly fixing means confining the session to an actor.
 - No app icon — `Assets.xcassets/AppIcon.appiconset` is an empty placeholder.
 - `README.md` says the licence is TBD. **Ask Kai**, don't pick one.
+- Changing the Open Food Facts contact in Settings does not rebuild `OpenFoodFactsClient` until the
+  next launch. Fine for now.
 
 ---
 
@@ -204,11 +169,10 @@ what RepCount does. The eight non-negotiables are listed in `CLAUDE.md`; the fir
 
 ## Honest assessment
 
-The foundation is solid and verified — models, persistence, schema, utilities and both API clients all
-passed CI green with 126 tests. The failures since are all the same category: Swift 6 strict concurrency
-at the boundary between SwiftData's `@MainActor`-bound models and non-Sendable Apple framework types.
-They're mechanical, they're surfacing one layer at a time, and each fix has revealed the next one
-underneath.
+The foundation is solid, and the workouts layer has now compiled. Run `35490081444` executed 218 tests;
+the five failures were test-expectation mismatches (rest-timer cancel counts, stats helper stamping
+`complete()` as now). Remaining integration seams (real food clients, scanner, calorie-progress
+agreement) are in this push and need a green run to count as verified.
 
 What has *not* been verified is anything visual. Not one screen in this app has been rendered, ever.
 Compiling is a low bar. Expect layout problems, spacing that looks wrong on a real device, and flows
