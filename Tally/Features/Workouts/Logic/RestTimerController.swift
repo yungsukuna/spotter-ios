@@ -46,10 +46,7 @@ final class RestTimerController {
         notifier.cancelNotification(identifier: notificationID)
 
         guard notify else { return }
-        let identifier = notificationID
-        Task { [notifier] in
-            await notifier.scheduleNotification(secondsFromNow: duration, identifier: identifier)
-        }
+        notifier.scheduleNotification(secondsFromNow: duration, identifier: notificationID)
     }
 
     /// Nudge the remaining time by `delta` seconds — positive for "+15s",

@@ -11,7 +11,12 @@ protocol RestTimerNotifying: Sendable {
     /// Schedule a one-shot notification `secondsFromNow` seconds out.
     /// Requests authorisation first if it has never been decided, so nothing
     /// has to ask for permission at launch.
-    func scheduleNotification(secondsFromNow: TimeInterval, identifier: String) async
+    ///
+    /// Synchronous on purpose: ``RestTimerController/start`` is itself
+    /// synchronous (it is called from a set-complete tap) and tests need to
+    /// observe the schedule without racing an unstructured `Task`. The system
+    /// notifier hops internally for `UNUserNotificationCenter`.
+    func scheduleNotification(secondsFromNow: TimeInterval, identifier: String)
     /// Cancel a previously scheduled notification. Safe to call when nothing
     /// is pending under that identifier.
     func cancelNotification(identifier: String)
@@ -23,7 +28,13 @@ protocol RestTimerNotifying: Sendable {
 /// starts — rather than at launch, because asking before the user has done
 /// anything is the kind of prompt people reflexively decline.
 struct SystemRestTimerNotifier: RestTimerNotifying {
-    func scheduleNotification(secondsFromNow: TimeInterval, identifier: String) async {
+    func scheduleNotification(secondsFromNow: TimeInterval, identifier: String) {
+        Task {
+            await schedule(secondsFromNow: secondsFromNow, identifier: identifier)
+        }
+    }
+
+    private func schedule(secondsFromNow: TimeInterval, identifier: String) async {
         let center = UNUserNotificationCenter.current()
         let settings = await center.notificationSettings()
 
@@ -61,7 +72,7 @@ final class MockRestTimerNotifier: RestTimerNotifying, @unchecked Sendable {
     private(set) var scheduledIdentifiers: [String] = []
     private(set) var cancelledIdentifiers: [String] = []
 
-    func scheduleNotification(secondsFromNow: TimeInterval, identifier: String) async {
+    func scheduleNotification(secondsFromNow: TimeInterval, identifier: String) {
         scheduledIdentifiers.append(identifier)
     }
 
