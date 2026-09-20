@@ -91,7 +91,12 @@ struct CachingFoodRepositoryTests {
         let repository = CachingFoodRepository(remote: remote, context: context)
 
         let error = try await #require(throws: FoodDataError.self) {
-            try await repository.product(barcode: "0000000000000")
+            // Discard the result explicitly. `product(barcode:)` returns a
+            // main-actor-isolated, non-Sendable `FoodItem`, and letting the
+            // closure return it makes `#require` hand that value back as a
+            // `sending` result — a data-race error under Swift 6. Only the
+            // thrown error is under test here.
+            _ = try await repository.product(barcode: "0000000000000")
         }
         #expect(error == .productNotFound)
     }

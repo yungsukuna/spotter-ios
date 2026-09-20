@@ -63,7 +63,9 @@ struct RoutineConversionTests {
         let workout = Workout()
         context.insert(workout)
         let entryA = workout.addExercise(a)
-        let entryB = workout.addExercise(b)
+        // Added so the routine has two exercises to group; the reference itself
+        // is not needed, only its presence in the workout.
+        _ = workout.addExercise(b)
         SupersetGrouping.groupWithNext(entryA, in: workout)
 
         let routine = RoutineConversion.makeRoutine(from: workout)
