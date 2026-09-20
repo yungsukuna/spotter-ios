@@ -98,11 +98,26 @@ final class MetadataScannerViewController: UIViewController, AVCaptureMetadataOu
         previewLayer = layer
     }
 
-    func metadataOutput(
+    /// - Note: `nonisolated` is required. `UIViewController` is `@MainActor`,
+    ///   but `AVCaptureMetadataOutputObjectsDelegate` declares this method
+    ///   without isolation, and under Swift 6 a main-actor method cannot
+    ///   satisfy a nonisolated protocol requirement.
+    ///
+    ///   Assuming main-actor isolation inside is sound rather than a gamble:
+    ///   the delegate is registered with `queue: .main` in `configureSession`,
+    ///   so callbacks genuinely do arrive on the main queue. If that queue ever
+    ///   changes, this must become an explicit hop.
+    nonisolated func metadataOutput(
         _ output: AVCaptureMetadataOutput,
         didOutput metadataObjects: [AVMetadataObject],
         from connection: AVCaptureConnection
     ) {
+        MainActor.assumeIsolated {
+            handle(metadataObjects)
+        }
+    }
+
+    private func handle(_ metadataObjects: [AVMetadataObject]) {
         for object in metadataObjects {
             guard
                 let readable = object as? AVMetadataMachineReadableCodeObject,

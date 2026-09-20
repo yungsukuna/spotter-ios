@@ -55,8 +55,8 @@ struct DataScannerRepresentable: UIViewControllerRepresentable {
 
         func dataScanner(
             _ dataScanner: DataScannerViewController,
-            didAdd addedItems: [DataScannerViewController.RecognizedItem],
-            allItems: [DataScannerViewController.RecognizedItem]
+            didAdd addedItems: [RecognizedItem],
+            allItems: [RecognizedItem]
         ) {
             for item in addedItems {
                 guard case .barcode(let barcode) = item,

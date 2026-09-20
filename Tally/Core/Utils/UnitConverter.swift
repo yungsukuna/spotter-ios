@@ -82,7 +82,10 @@ enum UnitConverter {
 /// this trims to at most two decimals and drops the point entirely for whole
 /// numbers.
 enum QuantityFormatter {
-    nonisolated(unsafe) private static let formatter: NumberFormatter = {
+    /// Configured once and never mutated afterwards, which is what makes
+    /// sharing it safe — `NumberFormatter` is `Sendable`, but only a formatter
+    /// nobody reassigns properties on is actually free of data races.
+    private static let formatter: NumberFormatter = {
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
         formatter.minimumFractionDigits = 0
@@ -90,12 +93,8 @@ enum QuantityFormatter {
         return formatter
     }()
 
-    private static let lock = NSLock()
-
     static func string(from value: Double) -> String {
-        lock.lock()
-        defer { lock.unlock() }
-        return formatter.string(from: NSNumber(value: value)) ?? "\(value)"
+        formatter.string(from: NSNumber(value: value)) ?? "\(value)"
     }
 }
 
