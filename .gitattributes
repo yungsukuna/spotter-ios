@@ -1,0 +1,7 @@
+# Normalise line endings. Authored on Windows, built on macOS — without this
+# the first checkout on a Mac produces a diff in every file.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.pdf binary
