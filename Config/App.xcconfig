@@ -1,0 +1,9 @@
+// Base build configuration.
+//
+// Defaults are declared first, then `Secrets.xcconfig` is optionally included
+// to override them. The `#include?` form does not error when the file is
+// absent, which is exactly what CI needs — Secrets.xcconfig is gitignored.
+
+USDA_API_KEY =
+
+#include? "../Secrets.xcconfig"

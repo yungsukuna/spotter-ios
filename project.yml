@@ -1,0 +1,98 @@
+# XcodeGen spec. Regenerate the project with:  xcodegen generate
+#
+# The .xcodeproj is NOT committed — it is derived from this file. Source paths
+# below are directory globs, so adding a new Swift file requires no change here:
+# just create the file and regenerate.
+
+name: Tally
+
+options:
+  bundleIdPrefix: com.yungsukuna
+  deploymentTarget:
+    iOS: "18.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+  generateEmptyDirectories: true
+
+configs:
+  Debug: debug
+  Release: release
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "18.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    SWIFT_EMIT_LOC_STRINGS: YES
+    CODE_SIGN_STYLE: Automatic
+  configs:
+    Debug:
+      SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
+      SWIFT_OPTIMIZATION_LEVEL: "-Onone"
+    Release:
+      SWIFT_OPTIMIZATION_LEVEL: "-O"
+
+targets:
+  Tally:
+    type: application
+    platform: iOS
+    configFiles:
+      Debug: Config/App.xcconfig
+      Release: Config/App.xcconfig
+    sources:
+      - path: Tally
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.yungsukuna.tally
+        PRODUCT_NAME: Tally
+        SWIFT_UPCOMING_FEATURE_STRICT_CONCURRENCY: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        TARGETED_DEVICE_FAMILY: "1"
+    info:
+      path: Tally/Info.plist
+      properties:
+        CFBundleDisplayName: Tally
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        UILaunchScreen:
+          UIColorName: ""
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UIUserInterfaceStyle: Automatic
+        ITSAppUsesNonExemptEncryption: false
+        # Shown in the iOS camera permission prompt when the barcode scanner opens.
+        NSCameraUsageDescription: Tally uses the camera to scan barcodes on food packaging so it can look up nutrition information.
+        # Injected from Config/App.xcconfig, which optionally includes the
+        # gitignored Secrets.xcconfig. Empty when no key is configured.
+        USDAAPIKey: $(USDA_API_KEY)
+
+  TallyTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: TallyTests
+    dependencies:
+      - target: Tally
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.yungsukuna.tally.tests
+        GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  Tally:
+    build:
+      targets:
+        Tally: all
+        TallyTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      gatherCoverageData: true
+      targets:
+        - TallyTests
+    archive:
+      config: Release
