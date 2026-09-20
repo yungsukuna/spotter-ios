@@ -32,7 +32,12 @@ struct MetadataCaptureScannerRepresentable: UIViewControllerRepresentable {
 final class MetadataScannerViewController: UIViewController, AVCaptureMetadataOutputObjectsDelegate {
     var onScan: ((String) -> Void)?
 
-    private let session = AVCaptureSession()
+    /// `nonisolated(unsafe)` because `startRunning()` and `stopRunning()` block
+    /// and must not run on the main thread, so the session is captured by the
+    /// background queue below. `AVCaptureSession` is not Sendable-audited, but
+    /// it is documented as safe to start and stop off the main thread, and
+    /// every other access here is main-actor confined.
+    nonisolated(unsafe) private let session = AVCaptureSession()
     private var previewLayer: AVCaptureVideoPreviewLayer?
 
     /// Debounce state: the delegate fires on every frame a code is visible
@@ -112,18 +117,21 @@ final class MetadataScannerViewController: UIViewController, AVCaptureMetadataOu
         didOutput metadataObjects: [AVMetadataObject],
         from connection: AVCaptureConnection
     ) {
+        // Reduce to plain strings *before* crossing into the main actor.
+        // `AVMetadataObject` is not Sendable, so handing the array itself over
+        // is a data-race error under Swift 6; `[String]` crosses freely.
+        let payloads = metadataObjects.compactMap {
+            ($0 as? AVMetadataMachineReadableCodeObject)?.stringValue
+        }
+        guard !payloads.isEmpty else { return }
+
         MainActor.assumeIsolated {
-            handle(metadataObjects)
+            handle(payloads)
         }
     }
 
-    private func handle(_ metadataObjects: [AVMetadataObject]) {
-        for object in metadataObjects {
-            guard
-                let readable = object as? AVMetadataMachineReadableCodeObject,
-                let payload = readable.stringValue
-            else { continue }
-
+    private func handle(_ payloads: [String]) {
+        for payload in payloads {
             let now = Date()
             if payload == lastEmittedPayload, now.timeIntervalSince(lastEmittedAt) < debounceInterval {
                 continue
