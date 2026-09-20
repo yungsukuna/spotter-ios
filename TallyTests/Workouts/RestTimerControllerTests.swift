@@ -49,9 +49,10 @@ struct RestTimerControllerTests {
         controller.addTime(15, now: now)
 
         #expect(controller.secondsRemaining(now: now) == 45)
-        // The original notification is cancelled rather than left to fire at
-        // the wrong time; no replacement is scheduled.
-        #expect(notifier.cancelledIdentifiers.count == 1)
+        // `start` cancels any leftover notification before scheduling, then
+        // `addTime` cancels that schedule rather than leaving it to fire at
+        // the original end date. No replacement is scheduled.
+        #expect(notifier.cancelledIdentifiers.count == 2)
         #expect(notifier.scheduledIdentifiers.count == 1)
     }
 
@@ -77,7 +78,8 @@ struct RestTimerControllerTests {
 
         #expect(controller.state == .idle)
         #expect(!controller.isActive)
-        #expect(notifier.cancelledIdentifiers.count == 1)
+        // Once from `start` (clearing any leftover) and once from `skip`.
+        #expect(notifier.cancelledIdentifiers.count == 2)
     }
 
     @Test("Expiration only fires once the end date has passed")

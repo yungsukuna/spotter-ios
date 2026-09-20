@@ -28,7 +28,10 @@ struct WorkoutStatsCalculatorTests {
         let workout = Workout(startedAt: startedAt)
         context.insert(workout)
         let entry = workout.addExercise(exercise)
-        entry.addSet(weightKG: weightKG, reps: reps, isWarmup: isWarmup).complete()
+        // Stamp completion at the session's own date. `complete()` defaults
+        // to `Date()`, which would collapse every historical session onto
+        // today and make the volume series a single point.
+        entry.addSet(weightKG: weightKG, reps: reps, isWarmup: isWarmup).complete(at: startedAt)
         workout.finish(at: startedAt.addingTimeInterval(1800))
         return workout
     }
