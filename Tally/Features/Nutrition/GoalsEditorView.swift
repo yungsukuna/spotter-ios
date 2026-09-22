@@ -11,12 +11,16 @@ struct GoalsEditorView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var settings: UserSettings?
+    @State private var showingCalculator = false
 
     var body: some View {
         NavigationStack {
             Group {
                 if let settings {
                     Form {
+                        Section {
+                            Button("Calculate…") { showingCalculator = true }
+                        }
                         Section("Daily Goals") {
                             goalField("Calories", value: binding(for: settings, \.dailyKcalGoal))
                             goalField("Protein (g)", value: binding(for: settings, \.dailyProteinGoalG))
@@ -38,6 +42,11 @@ struct GoalsEditorView: View {
             .task {
                 if settings == nil {
                     settings = UserSettings.current(in: modelContext)
+                }
+            }
+            .sheet(isPresented: $showingCalculator) {
+                if let settings {
+                    GoalCalculatorView(settings: settings)
                 }
             }
         }
