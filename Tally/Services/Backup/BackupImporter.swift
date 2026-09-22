@@ -553,6 +553,9 @@ enum BackupImporter {
         // MARK: Settings — never a second row; copy fields only into a fresh store
 
         if backup.userSettings != nil {
+            // Hoisted: `try` is not allowed inside the autoclosure on the
+            // right-hand side of `&&`.
+            let existingRoutineCount = try context.fetchCount(FetchDescriptor<Routine>())
             let isFreshStore =
                 existingDiaryEntryIDs.isEmpty
                 && existingSavedMealIDs.isEmpty
@@ -560,7 +563,7 @@ enum BackupImporter {
                 && existingWorkoutIDs.isEmpty
                 && existingWorkoutExerciseIDs.isEmpty
                 && existingSetEntryIDs.isEmpty
-                && (try context.fetchCount(FetchDescriptor<Routine>())) == 0
+                && existingRoutineCount == 0
                 && existingRoutineExerciseIDs.isEmpty
                 && existingCardioEntryIDs.isEmpty
                 && existingBodyMeasurementIDs.isEmpty
