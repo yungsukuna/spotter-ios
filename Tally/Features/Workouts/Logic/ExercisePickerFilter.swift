@@ -16,14 +16,23 @@ enum ExercisePickerFilter {
     }
 
     /// Whether `exercise` should show up under the current query and filters.
+    ///
+    /// `includeCardio` defaults to `false` so every existing caller — the
+    /// strength picker, `RoutineEditorView` — keeps excluding cardio
+    /// exercises without having to opt in. `CardioEntrySheet`'s picker passes
+    /// `true` (and then narrows further to cardio-only itself; this flag only
+    /// controls whether cardio is *excluded*, not whether it's the only thing
+    /// shown).
     static func matches(
         _ exercise: Exercise,
         query: String,
         muscleGroup: MuscleGroup?,
         equipment: Equipment?,
-        includeArchived: Bool = false
+        includeArchived: Bool = false,
+        includeCardio: Bool = false
     ) -> Bool {
         if !includeArchived && exercise.isArchived { return false }
+        if !includeCardio && exercise.isCardio { return false }
         if let muscleGroup, exercise.muscleGroup != muscleGroup { return false }
         if let equipment, exercise.equipment != equipment { return false }
 
@@ -37,7 +46,8 @@ enum ExercisePickerFilter {
         query: String,
         muscleGroup: MuscleGroup? = nil,
         equipment: Equipment? = nil,
-        includeArchived: Bool = false
+        includeArchived: Bool = false,
+        includeCardio: Bool = false
     ) -> [Exercise] {
         exercises.filter {
             matches(
@@ -45,7 +55,8 @@ enum ExercisePickerFilter {
                 query: query,
                 muscleGroup: muscleGroup,
                 equipment: equipment,
-                includeArchived: includeArchived
+                includeArchived: includeArchived,
+                includeCardio: includeCardio
             )
         }
     }

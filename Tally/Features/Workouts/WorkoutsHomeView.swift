@@ -11,8 +11,10 @@ struct WorkoutsHomeView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Workout.startedAt, order: .reverse) private var allWorkouts: [Workout]
     @Query(sort: \Routine.createdAt, order: .reverse) private var routines: [Routine]
+    @Query(sort: \CardioEntry.performedAt, order: .reverse) private var cardioEntries: [CardioEntry]
 
     @State private var path = NavigationPath()
+    @State private var showingCardioSheet = false
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -31,6 +33,9 @@ struct WorkoutsHomeView: View {
             }
             .navigationDestination(for: Routine.self) { routine in
                 RoutineEditorView(routine: routine)
+            }
+            .sheet(isPresented: $showingCardioSheet) {
+                CardioEntrySheet()
             }
         }
     }
@@ -61,6 +66,12 @@ struct WorkoutsHomeView: View {
                     startEmptyWorkout()
                 } label: {
                     Label("Start Empty Workout", systemImage: "plus.circle.fill")
+                        .frame(minHeight: Theme.Layout.minimumTapTarget)
+                }
+                Button {
+                    showingCardioSheet = true
+                } label: {
+                    Label("Log Cardio", systemImage: "figure.run")
                         .frame(minHeight: Theme.Layout.minimumTapTarget)
                 }
             }
@@ -102,13 +113,18 @@ struct WorkoutsHomeView: View {
 
     private var historySection: some View {
         Section("Recent Workouts") {
-            if finishedWorkouts.isEmpty {
+            if recentItems.isEmpty {
                 Text("No workouts logged yet.")
                     .foregroundStyle(Theme.Colors.secondaryText)
             }
-            ForEach(Array(finishedWorkouts.prefix(5))) { workout in
-                NavigationLink(value: workout) {
-                    WorkoutHistoryRow(workout: workout)
+            ForEach(recentItems) { item in
+                switch item {
+                case .workout(let workout):
+                    NavigationLink(value: workout) {
+                        WorkoutHistoryRow(workout: workout)
+                    }
+                case .cardio(let entry):
+                    CardioHistoryRow(entry: entry, weightUnit: weightUnit)
                 }
             }
             NavigationLink("See All History") {
@@ -119,12 +135,40 @@ struct WorkoutsHomeView: View {
 
     // MARK: - Data
 
+    /// One row of the merged "Recent Workouts" section: a finished strength
+    /// workout or a logged cardio session, ordered together by date.
+    private enum HistoryItem: Identifiable, Hashable {
+        case workout(Workout)
+        case cardio(CardioEntry)
+
+        var id: String {
+            switch self {
+            case .workout(let workout): "workout-\(workout.id)"
+            case .cardio(let entry): "cardio-\(entry.id)"
+            }
+        }
+
+        var date: Date {
+            switch self {
+            case .workout(let workout): workout.startedAt
+            case .cardio(let entry): entry.performedAt
+            }
+        }
+    }
+
     private var activeWorkout: Workout? {
         allWorkouts.first { $0.finishedAt == nil }
     }
 
     private var finishedWorkouts: [Workout] {
         allWorkouts.filter { $0.finishedAt != nil }
+    }
+
+    private var weightUnit: WeightUnit { UserSettings.current(in: modelContext).weightUnit }
+
+    private var recentItems: [HistoryItem] {
+        let merged = finishedWorkouts.map(HistoryItem.workout) + cardioEntries.map(HistoryItem.cardio)
+        return Array(merged.sorted { $0.date > $1.date }.prefix(5))
     }
 
     // MARK: - Actions

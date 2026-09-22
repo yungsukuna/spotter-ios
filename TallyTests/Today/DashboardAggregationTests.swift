@@ -92,6 +92,28 @@ struct DashboardAggregationTests {
         #expect(!glances[0].hasWorkout)
     }
 
+    @Test("A cardio-only day counts as trained, same as a strength workout day")
+    func cardioOnlyDayCountsAsTrained() {
+        // `weekGlances`'s signature is unchanged (Feature 5, Decision 5):
+        // `WeeklyStripCard` unions cardio day keys into `workoutDayKeys`
+        // itself before calling in, so this just confirms a key present only
+        // because of a cardio session still lights up `hasWorkout`.
+        let keys = ["2026-09-13", "2026-09-14"]
+        let cardioOnlyDayKeys: Set<String> = ["2026-09-14"]
+
+        let glances = DashboardAggregation.weekGlances(
+            keys: keys,
+            nutrientsByDay: [:],
+            kcalGoal: 2000,
+            waterByDay: [:],
+            waterGoalML: 2500,
+            workoutDayKeys: cardioOnlyDayKeys
+        )
+
+        #expect(!glances[0].hasWorkout)
+        #expect(glances[1].hasWorkout)
+    }
+
     @Test("Weekly series over an entirely empty history is still one glance per key")
     func weekGlancesOverEmptyHistory() {
         let keys = ["2026-09-13", "2026-09-14"]

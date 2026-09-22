@@ -16,6 +16,7 @@ struct ActiveWorkoutView: View {
     @State private var settings: UserSettings?
     @State private var restTimer = RestTimerController()
     @State private var showingExercisePicker = false
+    @State private var showingCardioSheet = false
     @State private var showingDiscardConfirm = false
     @State private var historyExercise: Exercise?
     @State private var statsExercise: Exercise?
@@ -50,6 +51,20 @@ struct ActiveWorkoutView: View {
                 }
                 .buttonStyle(.bordered)
                 .padding(.horizontal, Theme.Layout.cardPadding)
+
+                // A "finisher" logged from inside the session without leaving
+                // it — uses the same sheet `WorkoutsHomeView` presents. It
+                // does not attach to `workout`; see `CardioEntrySheet`.
+                Button {
+                    showingCardioSheet = true
+                } label: {
+                    Label("Log Cardio", systemImage: "figure.run")
+                        .frame(maxWidth: .infinity)
+                        .frame(minHeight: Theme.Layout.minimumTapTarget)
+                }
+                .buttonStyle(.bordered)
+                .padding(.horizontal, Theme.Layout.cardPadding)
+                .padding(.top, Theme.Spacing.sm)
             }
             .padding(.vertical, Theme.Spacing.lg)
         }
@@ -76,6 +91,9 @@ struct ActiveWorkoutView: View {
             ExercisePickerView { exercise in
                 workout.addExercise(exercise)
             }
+        }
+        .sheet(isPresented: $showingCardioSheet) {
+            CardioEntrySheet()
         }
         .sheet(item: $historyExercise) { exercise in
             ExerciseHistorySheet(exercise: exercise, excludingWorkoutID: workout.id)

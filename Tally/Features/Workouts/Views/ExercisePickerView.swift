@@ -5,6 +5,16 @@ import SwiftUI
 /// both to add an exercise to the active session and, via `RoutineEditorView`,
 /// to build a routine.
 struct ExercisePickerView: View {
+    /// Which slice of the library this picker shows. `.strength` (the
+    /// default) excludes cardio exercises — this is the fix for the bug
+    /// where adding "Running" to a workout used to offer weight×reps rows.
+    /// `.cardioOnly` is used by `CardioEntrySheet`.
+    enum Mode {
+        case strength
+        case cardioOnly
+    }
+
+    var mode: Mode = .strength
     var onSelect: (Exercise) -> Void
 
     @Environment(\.modelContext) private var modelContext
@@ -43,7 +53,7 @@ struct ExercisePickerView: View {
                 }
             }
             .searchable(text: $query, prompt: "Search exercises")
-            .navigationTitle("Add Exercise")
+            .navigationTitle(mode == .cardioOnly ? "Choose Cardio Exercise" : "Add Exercise")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -54,8 +64,10 @@ struct ExercisePickerView: View {
                         Button("Create Custom Exercise", systemImage: "plus") {
                             showingCustomExercise = true
                         }
-                        Divider()
-                        filterMenuContent
+                        if mode == .strength {
+                            Divider()
+                            filterMenuContent
+                        }
                     } label: {
                         Image(systemName: "line.3.horizontal.decrease.circle")
                     }
@@ -89,14 +101,26 @@ struct ExercisePickerView: View {
     }
 
     private var sections: [ExercisePickerFilter.RegionSection] {
-        ExercisePickerFilter.groupedByRegion(
-            ExercisePickerFilter.filtered(allExercises, query: query, muscleGroup: muscleGroup, equipment: equipment)
+        let filtered = ExercisePickerFilter.filtered(
+            allExercises,
+            query: query,
+            muscleGroup: mode == .cardioOnly ? nil : muscleGroup,
+            equipment: mode == .cardioOnly ? nil : equipment,
+            includeCardio: mode == .cardioOnly
         )
+        let scoped = mode == .cardioOnly ? filtered.filter(\.isCardio) : filtered
+        return ExercisePickerFilter.groupedByRegion(scoped)
     }
 }
 
 #Preview {
     ExercisePickerView { _ in }
+        .modelContainer(TallySchema.previewContainer())
+        .environment(\.appEnvironment, .preview())
+}
+
+#Preview("Cardio Only") {
+    ExercisePickerView(mode: .cardioOnly) { _ in }
         .modelContainer(TallySchema.previewContainer())
         .environment(\.appEnvironment, .preview())
 }

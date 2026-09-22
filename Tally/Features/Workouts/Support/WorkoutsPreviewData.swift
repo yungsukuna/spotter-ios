@@ -108,5 +108,31 @@ enum WorkoutsPreviewData {
     static func seedHomeScreen(in context: ModelContext) {
         seedRoutine(in: context)
         makeFinishedWorkout(in: context)
+        makeCardioEntry(in: context)
+    }
+
+    /// A single logged treadmill session, for cardio row/history previews.
+    @discardableResult
+    static func makeCardioEntry(in context: ModelContext) -> CardioEntry {
+        let treadmill = Exercise(
+            name: "Treadmill",
+            equipment: .cardio,
+            muscleGroup: .cardio,
+            isCardio: true
+        )
+        context.insert(treadmill)
+
+        let entry = CardioEntry(
+            performedAt: .now.addingTimeInterval(-1 * 86400),
+            exerciseName: treadmill.name,
+            durationSeconds: 32 * 60,
+            distanceKM: 5.2,
+            calories: 310,
+            exercise: treadmill
+        )
+        context.insert(entry)
+
+        try? context.save()
+        return entry
     }
 }
