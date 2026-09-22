@@ -323,7 +323,7 @@ All three parts touch `Tally/Features/Nutrition/`. Ship them as three PRs.
 **Files:** `Tally/Features/Nutrition/GoalCalculator.swift`, `Tally/Features/Nutrition/GoalCalculatorView.swift`, `GoalsEditorView.swift` (button), `Tally/Features/Settings/SettingsView.swift` (button), `TallyTests/Nutrition/GoalCalculatorTests.swift`.
 
 **Tests:**
-- Male, 80 kg, 180 cm, age 30 → BMR 1780. Female → 1614. Unspecified → 1702.
+- Male, 80 kg, 180 cm, age 30 → BMR 1780. Female → 1614. Unspecified → 1697.
 - Multipliers apply correctly.
 - Losing 0.5 kg/wk → −550.
 - The floor clamp works.
