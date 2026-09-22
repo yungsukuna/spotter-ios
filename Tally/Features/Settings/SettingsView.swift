@@ -36,6 +36,7 @@ private struct SettingsForm: View {
             workoutSection
             waterPresetsSection
             foodDataSection
+            DataManagementSection()
             aboutSection
         }
         .sheet(isPresented: $showingPresetEditor) {
