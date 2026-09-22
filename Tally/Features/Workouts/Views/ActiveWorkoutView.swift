@@ -54,7 +54,10 @@ struct ActiveWorkoutView: View {
             .padding(.vertical, Theme.Spacing.lg)
         }
         .safeAreaInset(edge: .bottom) {
-            if restTimer.isActive {
+            // Shown while running *and* while finished — see `RestTimerBar`'s
+            // finished style, which is how the app signals expiry when the
+            // local notification is suppressed in the foreground.
+            if restTimer.state != .idle {
                 RestTimerBar(controller: restTimer)
             }
         }

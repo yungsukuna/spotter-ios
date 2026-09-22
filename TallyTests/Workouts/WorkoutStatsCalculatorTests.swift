@@ -124,6 +124,28 @@ struct WorkoutStatsCalculatorTests {
         #expect(records.first { $0.reps == 10 }?.weightKG == 60)
     }
 
+    @Test("One-rep-max series respects the formula passed in")
+    func oneRepMaxSeriesRespectsFormula() throws {
+        let context = try makeContext()
+        let exercise = Exercise(name: "Bench Press")
+        context.insert(exercise)
+        let now = Date()
+
+        // A submaximal set — same weight and reps either way — so Epley and
+        // Brzycki disagree on the estimate. A single-rep set would return
+        // the same value under both formulae and wouldn't prove anything.
+        logSession(exercise: exercise, weightKG: 100, reps: 5, daysAgo: 1, now: now, context: context)
+
+        let epley = WorkoutStatsCalculator.oneRepMaxSeries(for: exercise, formula: .epley, range: .allTime)
+        let brzycki = WorkoutStatsCalculator.oneRepMaxSeries(for: exercise, formula: .brzycki, range: .allTime)
+
+        #expect(epley.count == 1)
+        #expect(brzycki.count == 1)
+        #expect(epley.first?.value != brzycki.first?.value)
+        #expect(epley.first?.value == StrengthMath.estimatedOneRepMax(weightKG: 100, reps: 5, formula: .epley))
+        #expect(brzycki.first?.value == StrengthMath.estimatedOneRepMax(weightKG: 100, reps: 5, formula: .brzycki))
+    }
+
     @Test("An exercise with no history produces empty series")
     func noHistoryProducesEmptySeries() throws {
         let context = try makeContext()

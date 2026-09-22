@@ -59,10 +59,11 @@ struct ExerciseStatsView: View {
         }
     }
 
-    private var weightUnit: WeightUnit { UserSettings.current(in: modelContext).weightUnit }
+    private var settings: UserSettings { UserSettings.current(in: modelContext) }
+    private var weightUnit: WeightUnit { settings.weightUnit }
 
     private var oneRepMaxSeries: [WorkoutStatsCalculator.DataPoint] {
-        WorkoutStatsCalculator.oneRepMaxSeries(for: exercise, range: range)
+        WorkoutStatsCalculator.oneRepMaxSeries(for: exercise, formula: settings.oneRepMaxFormula, range: range)
     }
     private var volumeSeries: [WorkoutStatsCalculator.DataPoint] {
         WorkoutStatsCalculator.volumeSeries(for: exercise, range: range)
