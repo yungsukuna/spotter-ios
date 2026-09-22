@@ -28,6 +28,7 @@ struct SettingsView: View {
 private struct SettingsForm: View {
     @Bindable var settings: UserSettings
     @State private var showingPresetEditor = false
+    @State private var showingGoalCalculator = false
 
     var body: some View {
         Form {
@@ -42,12 +43,16 @@ private struct SettingsForm: View {
         .sheet(isPresented: $showingPresetEditor) {
             WaterPresetEditorView(settings: settings, unit: settings.volumeUnit)
         }
+        .sheet(isPresented: $showingGoalCalculator) {
+            GoalCalculatorView(settings: settings)
+        }
     }
 
     // MARK: - Goals
 
     private var goalsSection: some View {
         Section("Goals") {
+            Button("Calculate Goals…") { showingGoalCalculator = true }
             LabeledContent("Calories") {
                 TextField("kcal", value: $settings.dailyKcalGoal, format: .number)
                     .keyboardType(.numberPad)
@@ -129,7 +134,34 @@ private struct SettingsForm: View {
                 }
             }
             Toggle("Keep Screen Awake", isOn: $settings.keepScreenAwakeDuringWorkout)
+            Picker("Set Effort Display", selection: $settings.setEffortDisplay) {
+                ForEach(SetEffortDisplay.allCases) { display in
+                    Text(display.displayName).tag(display)
+                }
+            }
+            LabeledContent("Bar Weight") {
+                HStack {
+                    TextField("Bar Weight", value: barWeightBinding, format: .number)
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.trailing)
+                    Text(settings.weightUnit.abbreviation).foregroundStyle(Theme.Colors.secondaryText)
+                }
+            }
         }
+    }
+
+    /// The bar weight displayed and typed in the user's preferred unit.
+    /// `UserSettings.barbellWeightKG` stays nil (meaning
+    /// `PlateCalculator.defaultBarWeightKG`) until the user actually types a
+    /// value here, matching the "nil means unset" convention.
+    private var barWeightBinding: Binding<Double> {
+        Binding(
+            get: {
+                let kg = settings.barbellWeightKG ?? PlateCalculator.defaultBarWeightKG(for: settings.weightUnit)
+                return UnitConverter.weight(kg, in: settings.weightUnit)
+            },
+            set: { settings.barbellWeightKG = UnitConverter.weightToKilograms($0, from: settings.weightUnit) }
+        )
     }
 
     // MARK: - Water presets

@@ -26,6 +26,11 @@ struct ExerciseHistorySheet: View {
                 } else {
                     ForEach(sessions) { session in
                         Section(session.date.formatted(date: .abbreviated, time: .omitted)) {
+                            if let notes = session.notes, !notes.isEmpty {
+                                Text(notes)
+                                    .font(Theme.Typography.caption)
+                                    .foregroundStyle(Theme.Colors.secondaryText)
+                            }
                             ForEach(session.sets, id: \.self) { set in
                                 HStack {
                                     Text(Format.weight(set.weightKG, in: weightUnit))

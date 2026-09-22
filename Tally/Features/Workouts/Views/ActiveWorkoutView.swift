@@ -29,6 +29,8 @@ struct ActiveWorkoutView: View {
                         entry: entry,
                         workout: workout,
                         weightUnit: weightUnit,
+                        setEffortDisplay: settings?.setEffortDisplay ?? .off,
+                        barbellWeightKG: settings?.barbellWeightKG,
                         bracketPosition: SupersetGrouping.bracketPosition(for: entry, in: workout),
                         canGroupWithNext: hasNextExercise(after: entry),
                         priorCompletedSets: priorCompletedSets(for: entry.exercise),
@@ -152,12 +154,16 @@ struct ActiveWorkoutView: View {
         return WorkoutStatsCalculator.completedSets(for: exercise).filter { $0.workoutID != workout.id }
     }
 
-    private func handleSetCompleted() {
-        guard let settings, settings.autoStartRestTimer else { return }
-        restTimer.start(
-            duration: TimeInterval(settings.restTimerSeconds),
-            notify: settings.restTimerNotifications
-        )
+    private func handleSetCompleted(_ entry: WorkoutExercise) {
+        guard let settings else { return }
+        guard let duration = RestDuration.resolve(
+            exerciseOverride: entry.exercise?.restTimerSeconds,
+            globalDefault: settings.restTimerSeconds,
+            autoStart: settings.autoStartRestTimer
+        ) else {
+            return
+        }
+        restTimer.start(duration: duration, notify: settings.restTimerNotifications)
     }
 
     private func finishWorkout() {
