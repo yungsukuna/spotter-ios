@@ -162,6 +162,7 @@ private struct DiaryDayContent: View {
                             .swipeActions(edge: .trailing) {
                                 Button(role: .destructive) {
                                     modelContext.delete(entry)
+                                    WidgetSnapshotWriter.refresh(in: modelContext)
                                 } label: {
                                     Label("Delete", systemImage: "trash")
                                 }
@@ -254,6 +255,7 @@ private struct DiaryDayContent: View {
         for entry in newEntries {
             modelContext.insert(entry)
         }
+        WidgetSnapshotWriter.refresh(in: modelContext)
     }
 
     private func saveAsMeal(_ meal: Meal) {

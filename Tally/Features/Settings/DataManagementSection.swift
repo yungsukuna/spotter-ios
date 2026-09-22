@@ -118,6 +118,7 @@ struct DataManagementSection: View {
         do {
             let report = try BackupImporter.performImport(pendingImport, into: modelContext)
             importResultMessage = report.summary
+            WidgetSnapshotWriter.refresh(in: modelContext)
         } catch {
             importErrorMessage = Self.friendlyMessage(for: error)
         }

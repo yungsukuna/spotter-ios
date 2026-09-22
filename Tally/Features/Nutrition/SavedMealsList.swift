@@ -72,6 +72,7 @@ struct SavedMealsList: View {
             modelContext.insert(entry)
         }
         savedMeal.markUsed()
+        WidgetSnapshotWriter.refresh(in: modelContext)
         onLogged()
     }
 }

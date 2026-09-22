@@ -237,18 +237,21 @@ private struct WaterDayScreen: View {
         let entry = WaterEntry(volumeML: volumeML, presetLabel: presetLabel, calendar: calendar)
         modelContext.insert(entry)
         recentlyAdded = entry
+        WidgetSnapshotWriter.refresh(in: modelContext)
     }
 
     private func deleteEntries(at offsets: IndexSet) {
         for index in offsets {
             modelContext.delete(entries[index])
         }
+        WidgetSnapshotWriter.refresh(in: modelContext)
     }
 
     private func undoRecentlyAdded() {
         guard let recentlyAdded else { return }
         modelContext.delete(recentlyAdded)
         self.recentlyAdded = nil
+        WidgetSnapshotWriter.refresh(in: modelContext)
     }
 
     private var calendar: Calendar { .current }

@@ -35,7 +35,35 @@ struct TallyApp: App {
                     // shipped in later versions.
                     ExerciseLibrary.seedIfNeeded(in: modelContainer.mainContext)
                 }
+                .onScenePhaseBackground {
+                    WidgetSnapshotWriter.refresh(in: modelContainer.mainContext)
+                }
         }
         .modelContainer(modelContainer)
+    }
+}
+
+/// Runs `action` whenever the scene enters the background — leaving the app,
+/// locking the device, or switching away. Factored into a modifier rather
+/// than putting `@Environment(\.scenePhase)` directly on `TallyApp` (a
+/// `struct App` cannot hold `@Environment`) or on `RootTabView` (which
+/// belongs to another workstream).
+private struct ScenePhaseBackgroundModifier: ViewModifier {
+    @Environment(\.scenePhase) private var scenePhase
+    let action: () -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: scenePhase) { _, newPhase in
+                if newPhase == .background {
+                    action()
+                }
+            }
+    }
+}
+
+private extension View {
+    func onScenePhaseBackground(_ action: @escaping () -> Void) -> some View {
+        modifier(ScenePhaseBackgroundModifier(action: action))
     }
 }

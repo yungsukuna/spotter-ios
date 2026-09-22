@@ -74,6 +74,7 @@ struct QuickAddSheet: View {
         guard let nutrients else { return }
         let entry = QuickAdd.makeEntry(name: name, nutrients: nutrients, meal: meal)
         modelContext.insert(entry)
+        WidgetSnapshotWriter.refresh(in: modelContext)
         dismiss()
     }
 }

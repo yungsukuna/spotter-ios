@@ -129,6 +129,7 @@ struct CopyMealSheet: View {
         for entry in newEntries {
             modelContext.insert(entry)
         }
+        WidgetSnapshotWriter.refresh(in: modelContext)
         dismiss()
     }
 }
