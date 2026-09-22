@@ -9,12 +9,16 @@ import UIKit
 /// exists to support this one.
 struct ActiveWorkoutView: View {
     @Bindable var workout: Workout
+    /// Owned by `WorkoutsHomeView`, not this view: navigating back here mid
+    /// rest must not destroy the controller, or the pending notification /
+    /// Live Activity would be orphaned. See "Must change first" #3 in
+    /// `docs/PHASE2-PLAN.md`.
+    var restTimer: RestTimerController
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
     @State private var settings: UserSettings?
-    @State private var restTimer = RestTimerController()
     @State private var showingExercisePicker = false
     @State private var showingCardioSheet = false
     @State private var showingDiscardConfirm = false
@@ -163,7 +167,12 @@ struct ActiveWorkoutView: View {
         ) else {
             return
         }
-        restTimer.start(duration: duration, notify: settings.restTimerNotifications)
+        restTimer.start(
+            duration: duration,
+            notify: settings.restTimerNotifications,
+            exerciseName: entry.exercise?.name,
+            workoutName: workout.name
+        )
     }
 
     private func finishWorkout() {
@@ -192,7 +201,7 @@ struct ActiveWorkoutView: View {
     let workout = WorkoutsPreviewData.makeInProgressWorkout(in: container.mainContext)
 
     return NavigationStack {
-        ActiveWorkoutView(workout: workout)
+        ActiveWorkoutView(workout: workout, restTimer: RestTimerController())
     }
     .modelContainer(container)
     .environment(\.appEnvironment, .preview())

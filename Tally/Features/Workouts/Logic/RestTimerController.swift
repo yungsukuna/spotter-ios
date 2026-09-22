@@ -19,12 +19,17 @@ final class RestTimerController {
     private(set) var state: State = .idle
 
     private let notifier: any RestTimerNotifying
+    private let activityPresenter: any RestTimerActivityPresenting
     /// A single fixed identifier is enough: only one rest timer is ever
     /// running at a time, and starting a new one always supersedes it.
     private let notificationID = "com.tally.workouts.rest-timer"
 
-    init(notifier: any RestTimerNotifying = SystemRestTimerNotifier()) {
+    init(
+        notifier: any RestTimerNotifying = SystemRestTimerNotifier(),
+        activityPresenter: any RestTimerActivityPresenting = NoopRestTimerActivityPresenter()
+    ) {
         self.notifier = notifier
+        self.activityPresenter = activityPresenter
     }
 
     var isActive: Bool {
@@ -40,10 +45,25 @@ final class RestTimerController {
 
     /// Begin a rest period. Replaces whatever timer, if any, was already
     /// running, cancelling its pending notification first so two never fire.
-    func start(duration: TimeInterval, notify: Bool, now: Date = Date()) {
+    ///
+    /// - Parameters:
+    ///   - exerciseName: The exercise whose set was just completed, when
+    ///     known. Shown on the Live Activity.
+    ///   - workoutName: The active workout's name, shown as the Live
+    ///     Activity's title. Defaults to empty so existing call sites (and
+    ///     tests, which never look at the Live Activity) don't need to pass
+    ///     it.
+    func start(
+        duration: TimeInterval,
+        notify: Bool,
+        exerciseName: String? = nil,
+        workoutName: String = "",
+        now: Date = Date()
+    ) {
         let endDate = now.addingTimeInterval(max(0, duration))
         state = .running(endDate: endDate)
         notifier.cancelNotification(identifier: notificationID)
+        activityPresenter.begin(endDate: endDate, exerciseName: exerciseName, workoutName: workoutName)
 
         guard notify else { return }
         notifier.scheduleNotification(secondsFromNow: duration, identifier: notificationID)
@@ -64,8 +84,10 @@ final class RestTimerController {
         notifier.cancelNotification(identifier: notificationID)
         if newEnd <= now {
             state = .finished
+            activityPresenter.end()
         } else {
             state = .running(endDate: newEnd)
+            activityPresenter.update(endDate: newEnd)
         }
     }
 
@@ -74,6 +96,7 @@ final class RestTimerController {
     func skip() {
         state = .idle
         notifier.cancelNotification(identifier: notificationID)
+        activityPresenter.end()
     }
 
     /// Back to the starting state. Equivalent to ``skip()`` — kept as a
@@ -90,5 +113,6 @@ final class RestTimerController {
         guard case .running(let endDate) = state, endDate <= now else { return }
         state = .finished
         notifier.cancelNotification(identifier: notificationID)
+        activityPresenter.end()
     }
 }

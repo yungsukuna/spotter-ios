@@ -15,6 +15,14 @@ struct WorkoutsHomeView: View {
 
     @State private var path = NavigationPath()
     @State private var showingCardioSheet = false
+    /// Owns the rest timer for the lifetime of the tab, not just the logging
+    /// screen — see "Must change first" #3 in `docs/PHASE2-PLAN.md`.
+    /// Navigating back to this screen mid-rest must not tear down the
+    /// pending notification or Live Activity.
+    @State private var restTimer = RestTimerController(
+        activityPresenter: SystemRestTimerActivityPresenter(),
+        notifier: SystemRestTimerNotifier()
+    )
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -26,7 +34,7 @@ struct WorkoutsHomeView: View {
             .navigationTitle("Workouts")
             .navigationDestination(for: Workout.self) { workout in
                 if workout.isInProgress {
-                    ActiveWorkoutView(workout: workout)
+                    ActiveWorkoutView(workout: workout, restTimer: restTimer)
                 } else {
                     WorkoutDetailView(workout: workout)
                 }
@@ -36,6 +44,20 @@ struct WorkoutsHomeView: View {
             }
             .sheet(isPresented: $showingCardioSheet) {
                 CardioEntrySheet()
+            }
+        }
+        .task {
+            // Sweep any Live Activity left behind by an app kill mid-rest
+            // (`SystemRestTimerActivityPresenter.end()` also does this on
+            // every ordinary skip/finish, but that path never runs if the
+            // app was terminated instead).
+            //
+            // `.task` re-runs every time this screen reappears — switching
+            // tabs, or popping back from the logging screen mid-rest — so
+            // only sweep when no timer is live, or it would cancel the rest
+            // the lifter is in the middle of.
+            if restTimer.state == .idle {
+                restTimer.reset()
             }
         }
     }
