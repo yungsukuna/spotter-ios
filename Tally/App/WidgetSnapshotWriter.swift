@@ -54,7 +54,7 @@ enum WidgetSnapshotWriter {
     /// stays `nil` only when nothing logged that day carried any energy
     /// information at all — the same "unknown, not zero" rule the rest of the
     /// app follows.
-    static func makeSnapshot(
+    nonisolated static func makeSnapshot(
         dayKey: String,
         nutrientsLogged: [Nutrients],
         kcalGoal: Double,
