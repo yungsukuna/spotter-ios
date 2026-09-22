@@ -119,10 +119,15 @@ private struct DiaryDayContent: View {
     let goal: Nutrients
 
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.calendar) private var calendar
     @Query private var entries: [DiaryEntry]
 
     @State private var addFoodMeal: Meal?
+    @State private var quickAddMeal: Meal?
+    @State private var copyMealTarget: Meal?
     @State private var editingEntry: DiaryEntry?
+    @State private var savingMeal: Meal?
+    @State private var savedMealName = ""
 
     init(dayKey: String, goal: Nutrients) {
         self.dayKey = dayKey
@@ -167,14 +172,37 @@ private struct DiaryDayContent: View {
                     } label: {
                         Label("Add Food", systemImage: "plus.circle")
                     }
+                    Button {
+                        quickAddMeal = meal
+                    } label: {
+                        Label("Quick Add", systemImage: "bolt")
+                    }
                 } header: {
-                    Label(meal.displayName, systemImage: meal.symbolName)
+                    MealSectionHeader(
+                        meal: meal,
+                        onCopyYesterday: { copyFromYesterday(into: meal) },
+                        onCopyFrom: { copyMealTarget = meal },
+                        onSaveAsMeal: {
+                            savedMealName = ""
+                            savingMeal = meal
+                        }
+                    )
                 }
             }
         }
         .listStyle(.insetGrouped)
         .sheet(item: $addFoodMeal) { meal in
             AddFoodView(meal: meal)
+        }
+        .sheet(item: $quickAddMeal) { meal in
+            QuickAddSheet(meal: meal)
+        }
+        .sheet(item: $copyMealTarget) { meal in
+            CopyMealSheet(
+                targetDayKey: dayKey,
+                targetMeal: meal,
+                initialSourceDate: previousDay
+            )
         }
         .sheet(
             isPresented: Binding(
@@ -185,6 +213,80 @@ private struct DiaryDayContent: View {
             if let editingEntry {
                 EditDiaryEntryView(entry: editingEntry)
             }
+        }
+        .alert(
+            "Save as Meal",
+            isPresented: Binding(
+                get: { savingMeal != nil },
+                set: { isPresented in if !isPresented { savingMeal = nil } }
+            ),
+            presenting: savingMeal
+        ) { meal in
+            TextField("Name", text: $savedMealName)
+            Button("Save") { saveAsMeal(meal) }
+            Button("Cancel", role: .cancel) {}
+        } message: { meal in
+            let count = rows(for: meal).count
+            Text("Saves \(count) item\(count == 1 ? "" : "s") from \(meal.displayName).")
+        }
+    }
+
+    /// The day before the one being viewed, used as the default source date
+    /// when "Copy from…" opens.
+    private var previousDay: Date {
+        guard let dayStart = DayKey.date(from: dayKey, calendar: calendar) else { return Date() }
+        return calendar.date(byAdding: .day, value: -1, to: dayStart) ?? dayStart
+    }
+
+    private func copyFromYesterday(into meal: Meal) {
+        guard let dayStart = DayKey.date(from: dayKey, calendar: calendar),
+              let yesterday = calendar.date(byAdding: .day, value: -1, to: dayStart)
+        else { return }
+        let yesterdayKey = DayKey.make(from: yesterday, calendar: calendar)
+        let descriptor = FetchDescriptor<DiaryEntry>(
+            predicate: #Predicate<DiaryEntry> { $0.dayKey == yesterdayKey },
+            sortBy: [SortDescriptor(\.loggedAt)]
+        )
+        let fetched = (try? modelContext.fetch(descriptor)) ?? []
+        let snapshots = fetched.filter { $0.meal == meal }.map(DiaryEntrySnapshot.init(entry:))
+        guard !snapshots.isEmpty else { return }
+        let newEntries = MealCopy.copies(of: snapshots, into: meal, dayKey: dayKey, now: Date(), calendar: calendar)
+        for entry in newEntries {
+            modelContext.insert(entry)
+        }
+    }
+
+    private func saveAsMeal(_ meal: Meal) {
+        let trimmedName = savedMealName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty else { return }
+        let snapshots = rows(for: meal).map(DiaryEntrySnapshot.init(entry:))
+        guard !snapshots.isEmpty else { return }
+        let items = SavedMealLogging.items(from: snapshots)
+        let savedMeal = SavedMeal(name: trimmedName, defaultMeal: meal, items: items)
+        modelContext.insert(savedMeal)
+    }
+}
+
+/// Meal section header: the meal name, plus a menu for copying entries in or
+/// saving the section as a reusable meal.
+private struct MealSectionHeader: View {
+    let meal: Meal
+    var onCopyYesterday: () -> Void
+    var onCopyFrom: () -> Void
+    var onSaveAsMeal: () -> Void
+
+    var body: some View {
+        HStack {
+            Label(meal.displayName, systemImage: meal.symbolName)
+            Spacer()
+            Menu {
+                Button("Copy from Yesterday", action: onCopyYesterday)
+                Button("Copy from…", action: onCopyFrom)
+                Button("Save as Meal", action: onSaveAsMeal)
+            } label: {
+                Image(systemName: "ellipsis.circle")
+            }
+            .frame(minWidth: Theme.Layout.minimumTapTarget, minHeight: Theme.Layout.minimumTapTarget)
         }
     }
 }
