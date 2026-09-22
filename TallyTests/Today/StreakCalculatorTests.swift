@@ -93,7 +93,7 @@ struct StreakCalculatorTests {
         components.hour = 12
         let today = try #require(calendar.date(from: components))
 
-        let days: Set<String> = (0..<4).map { key(daysAgo: $0, from: today, calendar: calendar) }
+        let days: Set<String> = Set((0..<4).map { key(daysAgo: $0, from: today, calendar: calendar) })
 
         let result = StreakCalculator.currentStreak(days: days, today: today, calendar: calendar)
 
@@ -112,7 +112,7 @@ struct StreakCalculatorTests {
         components.hour = 12
         let today = try #require(calendar.date(from: components))
 
-        let days: Set<String> = (0..<4).map { key(daysAgo: $0, from: today, calendar: calendar) }
+        let days: Set<String> = Set((0..<4).map { key(daysAgo: $0, from: today, calendar: calendar) })
 
         let result = StreakCalculator.currentStreak(days: days, today: today, calendar: calendar)
 
@@ -130,7 +130,7 @@ struct StreakCalculatorTests {
         let today = try #require(calendar.date(from: components))
 
         // 2025-10-31, 11-01, 11-02.
-        let days: Set<String> = (0..<3).map { key(daysAgo: $0, from: today, calendar: calendar) }
+        let days: Set<String> = Set((0..<3).map { key(daysAgo: $0, from: today, calendar: calendar) })
 
         let result = StreakCalculator.currentStreak(days: days, today: today, calendar: calendar)
 
@@ -148,7 +148,7 @@ struct StreakCalculatorTests {
         let today = try #require(calendar.date(from: components))
 
         // 2025-12-31, 2026-01-01, 2026-01-02.
-        let days: Set<String> = (0..<3).map { key(daysAgo: $0, from: today, calendar: calendar) }
+        let days: Set<String> = Set((0..<3).map { key(daysAgo: $0, from: today, calendar: calendar) })
 
         let result = StreakCalculator.currentStreak(days: days, today: today, calendar: calendar)
 
