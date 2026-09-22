@@ -23,6 +23,7 @@ struct TodayView: View {
                     NutritionSummaryCard(goal: settings.nutritionGoal)
                     WaterSummaryCard(goalML: settings.dailyWaterGoalML, unit: settings.volumeUnit)
                     WorkoutSummaryCard(weightUnit: settings.weightUnit)
+                    BodyWeightCard(weightUnit: settings.weightUnit, goalWeightKG: settings.goalWeightKG)
                     WeeklyStripCard(kcalGoal: settings.dailyKcalGoal, waterGoalML: settings.dailyWaterGoalML)
                 }
                 .padding(Theme.Spacing.lg)
