@@ -20,8 +20,8 @@ struct WorkoutsHomeView: View {
     /// Navigating back to this screen mid-rest must not tear down the
     /// pending notification or Live Activity.
     @State private var restTimer = RestTimerController(
-        activityPresenter: SystemRestTimerActivityPresenter(),
-        notifier: SystemRestTimerNotifier()
+        notifier: SystemRestTimerNotifier(),
+        activityPresenter: SystemRestTimerActivityPresenter()
     )
 
     var body: some View {
