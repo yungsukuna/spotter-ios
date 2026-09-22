@@ -78,7 +78,10 @@ struct WarmupGeneratorTests {
         let ordered = entry.orderedSets
         #expect(ordered.count == 6)
         #expect(ordered.map(\.order) == [0, 1, 2, 3, 4, 5])
-        #expect(ordered.prefix(4).allSatisfy(\.isWarmup))
+        // Evaluated outside #expect: the macro's expansion of a key-path
+        // argument to `allSatisfy` does not compile.
+        let firstFourAreWarmups = ordered.prefix(4).allSatisfy { $0.isWarmup }
+        #expect(firstFourAreWarmups)
         #expect(ordered[4].id == working1.id)
         #expect(ordered[5].id == working2.id)
     }
