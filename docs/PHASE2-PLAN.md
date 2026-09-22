@@ -1,6 +1,6 @@
 # Tally — Phase 2 implementation plan (8 features)
 
-**Status: draft for Kai's review. Nothing here is approved or being built.**
+**Status: implemented in PR #2 (CI green). The recommended answer was taken for every decision below. Nothing has been checked on a device yet.**
 
 Grounded in the code as of `934a986` on `main`. Paths are relative to the repo root.
 
