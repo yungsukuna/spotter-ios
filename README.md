@@ -16,7 +16,7 @@ iPhone only, iOS 18+. No accounts, no subscription, no third-party dependencies.
 
 ## Getting started (macOS)
 
-You need Xcode 16 or later and [XcodeGen](https://github.com/yonaskolb/XcodeGen).
+You need Xcode 26 or later and [XcodeGen](https://github.com/yonaskolb/XcodeGen).
 
 ```bash
 brew install xcodegen
