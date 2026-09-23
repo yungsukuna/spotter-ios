@@ -61,6 +61,7 @@ struct NutritionSummaryCard: View {
                 )
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .spotterCard()
     }
 }

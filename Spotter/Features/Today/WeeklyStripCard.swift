@@ -57,6 +57,7 @@ struct WeeklyStripCard: View {
                 }
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .spotterCard()
     }
 }

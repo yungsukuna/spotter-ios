@@ -87,6 +87,7 @@ struct StreakSummaryCard: View {
                 .font(Theme.Typography.caption)
                 .foregroundStyle(Theme.Colors.secondaryText)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .spotterCard()
     }
 }
