@@ -14,7 +14,7 @@ protocol RestTimerActivityPresenting: Sendable {
     /// synchronous (it is called from a set-complete tap) and tests need to
     /// observe the call without racing an unstructured `Task`. The system
     /// presenter hops internally for `Activity.request`.
-    func begin(endDate: Date, exerciseName: String?, workoutName: String)
+    func begin(startDate: Date, endDate: Date, exerciseName: String?, workoutName: String)
     /// Update the running Live Activity's end date, e.g. after "+15s". A
     /// no-op if nothing is running.
     func update(endDate: Date)
@@ -25,7 +25,7 @@ protocol RestTimerActivityPresenting: Sendable {
 /// Does nothing. The default for `RestTimerController.init` so existing
 /// tests and previews never touch ActivityKit.
 struct NoopRestTimerActivityPresenter: RestTimerActivityPresenting {
-    func begin(endDate: Date, exerciseName: String?, workoutName: String) {}
+    func begin(startDate: Date, endDate: Date, exerciseName: String?, workoutName: String) {}
     func update(endDate: Date) {}
     func end() {}
 }
@@ -37,12 +37,14 @@ final class MockRestTimerActivityPresenter: RestTimerActivityPresenting, @unchec
     private(set) var beginCount = 0
     private(set) var updateCount = 0
     private(set) var endCount = 0
+    private(set) var lastStartDate: Date?
     private(set) var lastEndDate: Date?
     private(set) var lastExerciseName: String?
     private(set) var lastWorkoutName: String?
 
-    func begin(endDate: Date, exerciseName: String?, workoutName: String) {
+    func begin(startDate: Date, endDate: Date, exerciseName: String?, workoutName: String) {
         beginCount += 1
+        lastStartDate = startDate
         lastEndDate = endDate
         lastExerciseName = exerciseName
         lastWorkoutName = workoutName
@@ -81,6 +83,7 @@ private final class RestTimerActivityBox: @unchecked Sendable {
         var generation = 0
         var activityID: String?
         var exerciseName: String?
+        var startDate: Date?
     }
 
     private let lock = OSAllocatedUnfairLock(initialState: State())
@@ -96,6 +99,7 @@ private final class RestTimerActivityBox: @unchecked Sendable {
             let previous = state.activityID
             state.activityID = nil
             state.exerciseName = nil
+            state.startDate = nil
             return (state.generation, previous)
         }
     }
@@ -106,20 +110,21 @@ private final class RestTimerActivityBox: @unchecked Sendable {
 
     /// Records the activity a still-current `begin` obtained. Returns false
     /// (and records nothing) if `generation` has since moved on.
-    func setActivity(id: String, exerciseName: String?, generation: Int) -> Bool {
+    func setActivity(id: String, exerciseName: String?, startDate: Date, generation: Int) -> Bool {
         lock.withLock { state in
             guard state.generation == generation else { return false }
             state.activityID = id
             state.exerciseName = exerciseName
+            state.startDate = startDate
             return true
         }
     }
 
-    /// Generation, activity id and exercise name read together under one
-    /// lock acquisition, so a `skip`/`end` landing between separate reads
-    /// can't pair a generation with an activity it no longer owns.
-    func snapshot() -> (generation: Int, activityID: String?, exerciseName: String?) {
-        lock.withLock { ($0.generation, $0.activityID, $0.exerciseName) }
+    /// Generation, activity id, exercise name and start date read together
+    /// under one lock acquisition, so a `skip`/`end` landing between separate
+    /// reads can't pair a generation with an activity it no longer owns.
+    func snapshot() -> (generation: Int, activityID: String?, exerciseName: String?, startDate: Date?) {
+        lock.withLock { ($0.generation, $0.activityID, $0.exerciseName, $0.startDate) }
     }
 }
 
@@ -127,7 +132,7 @@ private final class RestTimerActivityBox: @unchecked Sendable {
 struct SystemRestTimerActivityPresenter: RestTimerActivityPresenting {
     private let box = RestTimerActivityBox()
 
-    func begin(endDate: Date, exerciseName: String?, workoutName: String) {
+    func begin(startDate: Date, endDate: Date, exerciseName: String?, workoutName: String) {
         let (generation, previousActivityID) = box.invalidate()
         let activitiesEnabled = ActivityAuthorizationInfo().areActivitiesEnabled
 
@@ -145,7 +150,11 @@ struct SystemRestTimerActivityPresenter: RestTimerActivityPresenting {
             guard box.currentGeneration() == generation else { return }
 
             let attributes = RestTimerActivityAttributes(workoutName: workoutName)
-            let state = RestTimerActivityAttributes.ContentState(endDate: endDate, exerciseName: exerciseName)
+            let state = RestTimerActivityAttributes.ContentState(
+                startDate: startDate,
+                endDate: endDate,
+                exerciseName: exerciseName
+            )
             let content = ActivityContent(state: state, staleDate: endDate)
 
             guard let activity = try? Activity<RestTimerActivityAttributes>.request(
@@ -158,22 +167,31 @@ struct SystemRestTimerActivityPresenter: RestTimerActivityPresenting {
 
             // A cancel could have raced in while `request` itself was
             // resolving — if so, end what we just started.
-            if !box.setActivity(id: activity.id, exerciseName: exerciseName, generation: generation) {
+            if !box.setActivity(
+                id: activity.id,
+                exerciseName: exerciseName,
+                startDate: startDate,
+                generation: generation
+            ) {
                 await activity.end(nil, dismissalPolicy: .immediate)
             }
         }
     }
 
     func update(endDate: Date) {
-        let (generation, maybeActivityID, exerciseName) = box.snapshot()
-        guard let activityID = maybeActivityID else { return }
+        let (generation, maybeActivityID, exerciseName, maybeStartDate) = box.snapshot()
+        guard let activityID = maybeActivityID, let startDate = maybeStartDate else { return }
 
         Task {
             guard box.currentGeneration() == generation else { return }
             guard let activity = Activity<RestTimerActivityAttributes>.activities.first(where: { $0.id == activityID }) else {
                 return
             }
-            let updatedState = RestTimerActivityAttributes.ContentState(endDate: endDate, exerciseName: exerciseName)
+            let updatedState = RestTimerActivityAttributes.ContentState(
+                startDate: startDate,
+                endDate: endDate,
+                exerciseName: exerciseName
+            )
             await activity.update(ActivityContent(state: updatedState, staleDate: endDate))
         }
     }

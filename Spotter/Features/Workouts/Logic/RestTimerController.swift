@@ -63,7 +63,7 @@ final class RestTimerController {
         let endDate = now.addingTimeInterval(max(0, duration))
         state = .running(endDate: endDate)
         notifier.cancelNotification(identifier: notificationID)
-        activityPresenter.begin(endDate: endDate, exerciseName: exerciseName, workoutName: workoutName)
+        activityPresenter.begin(startDate: now, endDate: endDate, exerciseName: exerciseName, workoutName: workoutName)
 
         guard notify else { return }
         notifier.scheduleNotification(secondsFromNow: duration, identifier: notificationID)

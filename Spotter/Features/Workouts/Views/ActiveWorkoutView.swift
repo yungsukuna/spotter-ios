@@ -45,6 +45,7 @@ struct ActiveWorkoutView: View {
                         onRemove: { workout.removeExercise(entry) },
                         onSetCompleted: handleSetCompleted
                     )
+                    .padding(.horizontal, Theme.Layout.cardPadding)
                     .padding(.bottom, gapAfter(entry))
                 }
 
@@ -74,6 +75,7 @@ struct ActiveWorkoutView: View {
             }
             .padding(.vertical, Theme.Spacing.lg)
         }
+        .scrollDismissesKeyboard(.interactively)
         .safeAreaInset(edge: .bottom) {
             // Shown while running *and* while finished — see `RestTimerBar`'s
             // finished style, which is how the app signals expiry when the
@@ -92,10 +94,16 @@ struct ActiveWorkoutView: View {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Finish", action: finishWorkout)
             }
+            // The set fields use number pads, which have no return key.
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done", action: dismissKeyboard)
+            }
         }
         .sheet(isPresented: $showingExercisePicker) {
             ExercisePickerView { exercise in
-                workout.addExercise(exercise)
+                let entry = workout.addExercise(exercise)
+                NewExerciseSets.populate(entry, excludingWorkout: workout)
             }
         }
         .sheet(isPresented: $showingCardioSheet) {
@@ -116,12 +124,11 @@ struct ActiveWorkoutView: View {
             Button("Keep Logging", role: .cancel) {}
         }
         .task {
-            settings = UserSettings.current(in: modelContext)
-        }
-        .onAppear {
-            if settings?.keepScreenAwakeDuringWorkout ?? true {
-                UIApplication.shared.isIdleTimerDisabled = true
-            }
+            // Settings are read here rather than in `onAppear`, which runs
+            // before this task and so could only ever see nil settings.
+            let loaded = UserSettings.current(in: modelContext)
+            settings = loaded
+            UIApplication.shared.isIdleTimerDisabled = loaded.keepScreenAwakeDuringWorkout
         }
         .onDisappear {
             UIApplication.shared.isIdleTimerDisabled = false
@@ -175,7 +182,14 @@ struct ActiveWorkoutView: View {
         )
     }
 
+    private func dismissKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+    }
+
     private func finishWorkout() {
+        // A rest timer outliving its workout would still notify and keep
+        // its Live Activity on the Lock Screen.
+        restTimer.reset()
         workout.finish()
         try? modelContext.save()
         dismiss()
@@ -190,6 +204,7 @@ struct ActiveWorkoutView: View {
     }
 
     private func discardWorkout() {
+        restTimer.reset()
         modelContext.delete(workout)
         try? modelContext.save()
         dismiss()
