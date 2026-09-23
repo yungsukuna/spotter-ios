@@ -1,102 +1,39 @@
 # Handoff
 
-Updated 2026-09-20 after the session that picked this up. Read `CLAUDE.md` first for the
+Updated 2026-09-23. Read `CLAUDE.md` first for the
 conventions, then this for where things actually stand.
 
 ---
 
-## The one thing to understand before touching anything
+## Where things stand
 
-**This repo is authored on Windows. There is no Swift compiler on this machine.** Nothing here can be
-compiled or run locally. The macOS GitHub Actions runner is the *only* verification that exists, and it
-takes 4–5 minutes per run.
+Updated 2026-09-23. The repo now lives on a Mac (Xcode 26.6, iOS 26.5 simulator), so the Windows /
+CI-only workflow described in earlier versions of this file is gone: build, test and run locally. The
+full suite (390+ tests) passes locally, and CI still runs the same thing on every push.
 
-That shapes the whole workflow. The loop is: read the CI annotations (and the test log, once the
-build is passing), fix, push, wait, repeat. Do not guess at a fix and move on — push it and confirm.
+The minimum deployment target is **iOS 26**. The app is primarily for Kai's own use, and dropping iOS
+18 removes every `#available` branch from the upcoming Liquid Glass / AlarmKit work.
 
-Kai has a Mac, so the faster loop is available if he's at it: `xcodegen generate && open Spotter.xcodeproj`
-surfaces every error at once instead of one CI round-trip at a time. **Ask before assuming he'll do
-that** — he hasn't opened the project in Xcode yet at time of writing.
-
----
-
-## Current state
-
-Repo: **https://github.com/yungsukuna/spotter-ios** (public), local at `C:\Users\Kai\Documents\GitHub\tally-ios`.
-
-`gh` CLI is installed at `C:\Program Files\GitHub CLI\gh.exe` and authenticated as **yungsukuna** with
-`repo` + `workflow` scopes. **It is not on PATH in the Bash tool** — invoke it by full path:
-
-```bash
-GH="/c/Program Files/GitHub CLI/gh.exe"; "$GH" run list --limit 3
-```
-
-On PowerShell:
-
-```powershell
-& "C:\Program Files\GitHub CLI\gh.exe" run list --limit 3
-```
-
-### CI status
-
-Run `35490081444` (handoff-notes commit) **compiled the workouts layer for the first time** and ran
-218 tests. The `#require` caching-test fix held. Five assertions failed, all test bugs rather than
-product bugs:
-
-- `RestTimerController.start` always cancels before scheduling, so a later `addTime` / `skip` makes
-  `cancelledIdentifiers.count == 2`, not 1.
-- `WorkoutStatsCalculatorTests.logSession` called `complete()` with the default `Date()`, so every
-  historical set stamped as today and `groupedByDay` collapsed two sessions into one point of 1025 kg.
-
-Those tests are fixed. Remaining handoff items also landed in the same push:
-
-- Food-tab `DayTotals` now uses `effectiveKcal`, matching the Today tab.
-- `SpotterApp` wires `OpenFoodFactsClient` + `USDAFoodDataCentralClient` through `CompositeFoodDataSource`.
-- `AddFoodView` presents `BarcodeScannerView`, looks up via `CachingFoodRepository`, and routes to
-  the portion picker or `CustomFoodEditorView` (`ScannedProductLookup`).
-- `actions/checkout@v5`.
-
-**Confirm the run that follows this push is green before starting anything new.**
-
----
-
-## How to read CI failures
-
-`gh run view --log-failed` returns nothing useful here. Use the annotations, and filter the CoreData
-file-permission noise that xcodebuild emits:
-
-```bash
-GH="/c/Program Files/GitHub CLI/gh.exe"
-"$GH" run view <RUN_ID> 2>&1 | tr -d '\r' | sed -n '/ANNOTATIONS/,$p' \
-  | grep -E "^X |^! " \
-  | grep -vE "^X (Information|  |File Permissions|755|644|drwx|-rw|component)"
-```
-
-`X` lines are errors, `!` are warnings.
-
-**Do not pipe `gh run watch --exit-status` into anything.** The pipeline's exit code is the last
-command's, not `gh`'s, which silently turns a failure into a success. This cost a false "CI is green"
-report earlier in the session. Use:
-
-```bash
-"$GH" run watch <ID> --exit-status > "$LOG" 2>&1 && echo SUCCESS || echo FAILED
-```
+`gh` is on PATH and authenticated as **yungsukuna**.
 
 ---
 
 ## Known remaining work
 
-### 1. Confirm this push is green (do this first)
+### 1. Workout logging fixes (PR #7)
 
-The previous run compiled and ran 218 tests; the five failures were test-expectation mismatches,
-now fixed, plus the remaining integration work. If the new run is red, read the annotations (filter
-CoreData noise — see below) and the test log, not `gh run view --log-failed` alone.
+The first simulator run found lost set input, an un-dismissable number pad, edge-to-edge cards, empty
+sets being completable, and a rest timer that outlived its workout. Fixed in
+https://github.com/yungsukuna/spotter-ios/pull/7. The Live Activity and keep-awake changes still need
+checking on a real device.
 
-### 2. Workouts compiled once, still never rendered
+### 2. RepCount-style workout screen redesign
 
-`Spotter/Features/Workouts/` compiled on run `35490081444`. Charts, optional-enum pickers, and
-`EditButton` / `.onMove` did not fail the build. That is a compile bar, not a visual one. Nothing in
-this app has ever been seen on a device or simulator UI.
+Next up, on iOS 26 APIs: glass rest-timer bar or `tabViewBottomAccessory`, column headers and units in
+set rows, a keyboard Next/Done bar, set-type menu on the set number, swipe to delete, exercise reorder.
+Also still open from the review: a `VersionedSchema` + migration plan before any TestFlight build
+(the store fails with `fatalError` on open), and `PreviousPerformance` being recomputed per set row per
+render.
 
 ### 3. Smaller items
 
