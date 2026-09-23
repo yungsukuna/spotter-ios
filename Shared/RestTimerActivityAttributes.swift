@@ -13,12 +13,23 @@ import Foundation
 /// change set to set, so it lives in `ContentState`.
 struct RestTimerActivityAttributes: ActivityAttributes {
     struct ContentState: Codable, Hashable {
+        /// When the rest period began. The lower bound of the countdown and
+        /// progress ranges, so the progress bar measures the whole rest
+        /// rather than restarting from whenever the widget is redrawn.
+        var startDate: Date
         /// When the rest period ends. Drives the countdown text and progress
         /// view directly via `Text(timerInterval:countsDown:)` /
         /// `ProgressView(timerInterval:countsDown:)` — no manual ticking.
         var endDate: Date
         /// The exercise the completed set belonged to, when known.
         var exerciseName: String?
+
+        /// `startDate...endDate`, clamped so the range is always valid —
+        /// constructing a `ClosedRange` whose upper bound is below its lower
+        /// bound traps, which would crash the widget extension.
+        var restInterval: ClosedRange<Date> {
+            startDate...max(startDate, endDate)
+        }
     }
 
     /// The workout this rest timer belongs to. Fixed for the activity's

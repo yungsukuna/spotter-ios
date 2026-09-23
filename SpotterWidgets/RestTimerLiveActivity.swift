@@ -23,7 +23,7 @@ struct RestTimerLiveActivity: Widget {
                         Text("Rest over")
                             .font(Theme.Typography.metricSmall)
                     } else {
-                        Text(timerInterval: Date()...context.state.endDate, countsDown: true)
+                        Text(timerInterval: context.state.restInterval, countsDown: true)
                             .font(Theme.Typography.metricSmall)
                             .monospacedDigit()
                     }
@@ -37,7 +37,7 @@ struct RestTimerLiveActivity: Widget {
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     if !context.isStale {
-                        ProgressView(timerInterval: Date()...context.state.endDate, countsDown: true)
+                        ProgressView(timerInterval: context.state.restInterval, countsDown: true)
                             .tint(Theme.Colors.workout)
                     }
                 }
@@ -49,7 +49,7 @@ struct RestTimerLiveActivity: Widget {
                     Text("0:00")
                         .monospacedDigit()
                 } else {
-                    Text(timerInterval: Date()...context.state.endDate, countsDown: true)
+                    Text(timerInterval: context.state.restInterval, countsDown: true)
                         .monospacedDigit()
                         .frame(maxWidth: 44)
                 }
@@ -85,12 +85,12 @@ private struct LockScreenView: View {
                     .font(Theme.Typography.metric)
                     .foregroundStyle(Theme.Colors.primaryText)
             } else {
-                Text(timerInterval: Date()...context.state.endDate, countsDown: true)
+                Text(timerInterval: context.state.restInterval, countsDown: true)
                     .font(Theme.Typography.metric)
                     .monospacedDigit()
                     .foregroundStyle(Theme.Colors.primaryText)
 
-                ProgressView(timerInterval: Date()...context.state.endDate, countsDown: true)
+                ProgressView(timerInterval: context.state.restInterval, countsDown: true)
                     .tint(Theme.Colors.workout)
             }
         }

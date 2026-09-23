@@ -29,6 +29,8 @@ struct SetRowView: View {
 
     @State private var weightText: String = ""
     @State private var repsText: String = ""
+    @State private var rejectedCompletions = 0
+    @FocusState private var isRepsFocused: Bool
 
     var body: some View {
         HStack(spacing: Theme.Spacing.sm) {
@@ -49,6 +51,7 @@ struct SetRowView: View {
 
             TextField(repsPlaceholderText, text: $repsText)
                 .keyboardType(.numberPad)
+                .focused($isRepsFocused)
                 .font(Theme.Typography.setValue)
                 .multilineTextAlignment(.center)
                 .frame(minWidth: 40, minHeight: Theme.Layout.minimumTapTarget)
@@ -91,6 +94,13 @@ struct SetRowView: View {
             Button("Delete Set", systemImage: "trash", role: .destructive, action: onDelete)
         }
         .onAppear(perform: seedTextIfNeeded)
+        // Written through to the model on every keystroke, not just on
+        // completion: the row's @State does not survive leaving the screen,
+        // or a LazyVStack recycling the row, and a completed set that is
+        // corrected must actually change.
+        .onChange(of: weightText) { _, newValue in storeWeight(newValue) }
+        .onChange(of: repsText) { _, newValue in storeReps(newValue) }
+        .sensoryFeedback(.error, trigger: rejectedCompletions)
     }
 
     /// Compact menu between the reps field and the completion check: shows
@@ -138,17 +148,53 @@ struct SetRowView: View {
         }
     }
 
+    /// An emptied field on a pending set clears the stored value so the
+    /// placeholder applies again on completion. On a completed set it leaves
+    /// the logged value alone — clearing a field is not a way to log zero.
+    private func storeWeight(_ text: String) {
+        if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            if !set.isCompleted { set.weightKG = 0 }
+            return
+        }
+        if let kg = SetInputResolver.weightKGToStore(text: text, unit: weightUnit, currentKG: set.weightKG) {
+            set.weightKG = kg
+        }
+    }
+
+    private func storeReps(_ text: String) {
+        if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            if !set.isCompleted { set.reps = 0 }
+            return
+        }
+        if let reps = SetInputResolver.parseReps(text: text), reps != set.reps {
+            set.reps = reps
+        }
+    }
+
     private func complete() {
         if set.isCompleted {
             set.uncomplete()
             return
         }
-        set.weightKG = SetInputResolver.resolveWeightKG(
+        let weightKG = SetInputResolver.resolveWeightKG(
             text: weightText,
             unit: weightUnit,
             placeholderKG: placeholder?.weightKG
         )
-        set.reps = SetInputResolver.resolveReps(text: repsText, placeholderReps: placeholder?.reps)
+        let reps = SetInputResolver.resolveReps(text: repsText, placeholderReps: placeholder?.reps)
+        guard SetInputResolver.canComplete(reps: reps) else {
+            rejectedCompletions += 1
+            isRepsFocused = true
+            return
+        }
+        set.weightKG = weightKG
+        set.reps = reps
+        // Show what was actually logged, rather than leaving the previous
+        // session's numbers as grey placeholder text on a completed row.
+        if weightKG > 0 {
+            weightText = Format.weight(weightKG, in: weightUnit, includeUnit: false)
+        }
+        repsText = "\(reps)"
         set.complete()
         onComplete()
     }

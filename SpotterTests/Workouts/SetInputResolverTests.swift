@@ -70,4 +70,57 @@ struct SetInputResolverTests {
     func noPlaceholderResolvesToZeroReps() {
         #expect(SetInputResolver.resolveReps(text: "", placeholderReps: nil) == 0)
     }
+
+    // MARK: - Parsing
+
+    @Test("A comma decimal separator is accepted")
+    func commaDecimalSeparator() {
+        #expect(SetInputResolver.parseWeightKG(text: "82,5", unit: .kilograms) == 82.5)
+        #expect(SetInputResolver.resolveWeightKG(text: "82,5", unit: .kilograms, placeholderKG: 60) == 82.5)
+    }
+
+    @Test("Negative numbers are rejected")
+    func negativeNumbersRejected() {
+        #expect(SetInputResolver.parseWeightKG(text: "-5", unit: .kilograms) == nil)
+        #expect(SetInputResolver.parseReps(text: "-3") == nil)
+    }
+
+    @Test("Empty text parses to nil, not zero")
+    func emptyTextParsesToNil() {
+        #expect(SetInputResolver.parseWeightKG(text: " ", unit: .kilograms) == nil)
+        #expect(SetInputResolver.parseReps(text: "") == nil)
+    }
+
+    // MARK: - Write-through
+
+    @Test("A changed weight is written back in kilograms")
+    func changedWeightIsStored() {
+        #expect(SetInputResolver.weightKGToStore(text: "62.5", unit: .kilograms, currentKG: 60) == 62.5)
+    }
+
+    @Test("Text that already matches the stored weight is not rewritten")
+    func matchingWeightIsNotRewritten() {
+        #expect(SetInputResolver.weightKGToStore(text: "60", unit: .kilograms, currentKG: 60) == nil)
+    }
+
+    @Test("A pounds round-trip does not drift the stored kilograms")
+    func poundsRoundTripDoesNotDrift() {
+        // 60 kg displays as "132.3" lb; converting that text back would store
+        // 60.01 kg and beat the old 60 kg, awarding a false PR.
+        let shown = Format.weight(60, in: .pounds, includeUnit: false)
+        #expect(SetInputResolver.weightKGToStore(text: shown, unit: .pounds, currentKG: 60) == nil)
+    }
+
+    @Test("Unparsable text leaves the stored weight alone")
+    func unparsableTextIsNotStored() {
+        #expect(SetInputResolver.weightKGToStore(text: "abc", unit: .kilograms, currentKG: 60) == nil)
+    }
+
+    // MARK: - Completion
+
+    @Test("A set needs at least one rep to be completed")
+    func completionNeedsReps() {
+        #expect(!SetInputResolver.canComplete(reps: 0))
+        #expect(SetInputResolver.canComplete(reps: 1))
+    }
 }

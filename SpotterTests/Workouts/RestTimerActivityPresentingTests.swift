@@ -23,6 +23,7 @@ struct RestTimerActivityPresentingTests {
         #expect(presenter.beginCount == 1)
         #expect(presenter.lastExerciseName == "Bench Press")
         #expect(presenter.lastWorkoutName == "Push Day")
+        #expect(presenter.lastStartDate == now)
         #expect(presenter.lastEndDate == now.addingTimeInterval(90))
     }
 
@@ -91,6 +92,7 @@ struct RestTimerActivityPresentingTests {
     @Test("ContentState round-trips through Codable")
     func contentStateCodableRoundTrip() throws {
         let original = RestTimerActivityAttributes.ContentState(
+            startDate: Date(timeIntervalSince1970: 1_699_999_910),
             endDate: Date(timeIntervalSince1970: 1_700_000_000),
             exerciseName: "Squat"
         )
@@ -101,9 +103,34 @@ struct RestTimerActivityPresentingTests {
         #expect(decoded == original)
     }
 
+    @Test("The rest interval spans start to end")
+    func restIntervalSpansStartToEnd() {
+        let start = Date(timeIntervalSince1970: 1_000)
+        let state = RestTimerActivityAttributes.ContentState(
+            startDate: start,
+            endDate: start.addingTimeInterval(90),
+            exerciseName: nil
+        )
+        #expect(state.restInterval == start...start.addingTimeInterval(90))
+    }
+
+    @Test("The rest interval never inverts when the end is before the start")
+    func restIntervalClampsInvertedRange() {
+        // "-15s" on a nearly finished timer can leave the end before the
+        // start; an inverted ClosedRange would trap in the widget.
+        let start = Date(timeIntervalSince1970: 1_000)
+        let state = RestTimerActivityAttributes.ContentState(
+            startDate: start,
+            endDate: start.addingTimeInterval(-10),
+            exerciseName: nil
+        )
+        #expect(state.restInterval == start...start)
+    }
+
     @Test("ContentState round-trips through Codable when the exercise name is nil")
     func contentStateCodableRoundTripNilExercise() throws {
         let original = RestTimerActivityAttributes.ContentState(
+            startDate: Date(timeIntervalSince1970: 1_699_999_910),
             endDate: Date(timeIntervalSince1970: 1_700_000_000),
             exerciseName: nil
         )
