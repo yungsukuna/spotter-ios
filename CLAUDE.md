@@ -1,30 +1,37 @@
 # Spotter — working notes
 
-iOS calorie / workout / water tracker. Swift 6, SwiftUI, SwiftData, iOS 18 minimum.
+iOS calorie / workout / water tracker. Swift 6, SwiftUI, SwiftData, iOS 26 minimum.
 Read `README.md` first for the architecture overview.
 
-## Critical constraint
+## Building and verifying
 
-**This repository is authored on Windows. There is no Swift compiler here.** Nothing you write can be
-compiled or run locally. The macOS GitHub Actions runner is the only build verification that exists.
+The repo is now worked on from a Mac with Xcode 26. Build, test and run locally rather than waiting on
+CI round-trips:
 
-Write accordingly:
+```bash
+xcodegen generate
+xcodebuild test -project Spotter.xcodeproj -scheme Spotter \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' CODE_SIGNING_ALLOWED=NO
+```
 
-- Prefer boring, certain Swift over clever Swift. You cannot check whether the clever thing compiles.
-- Do not invent API. If you are not certain a symbol exists with that exact signature, use one you are
-  certain of.
-- Never reference a type, property or function that is not either in this repo already or in a
-  first-party Apple framework you are sure of.
-- Keep files self-contained. A compile error in a file nobody else depends on is cheap; one in a shared
-  type blocks everyone.
+Passing tests is not the same as working UI. Nothing in the app was seen running until September
+2026, and the first look turned up layout bugs and lost input that no test caught. Run the app in the
+simulator and use the screen you changed before calling a UI change done.
+
+The minimum is iOS 26, so iOS 26 APIs (Liquid Glass, AlarmKit, `tabViewBottomAccessory`, …) can be
+used directly with no `#available` checks.
+
+Still: do not invent API. If you are not certain a symbol exists with that exact signature, check it
+compiles before building on it.
 
 ## Hard rules
 
 **No third-party dependencies.** Everything needed is first-party: SwiftUI, SwiftData, VisionKit, Swift
 Charts, Swift Testing. Do not add a package.
 
-**Do not edit `project.yml`.** Source paths are directory globs — new files are picked up
-automatically. Editing it is how four parallel workstreams create merge conflicts.
+**Edit `project.yml` only for project-level changes** (deployment target, capabilities, Info.plist keys,
+new targets). Source paths are directory globs, so new files never need it — create the file and re-run
+`xcodegen generate`.
 
 **Stay inside your assigned folder.** If you need something from a shared file (`Core/`, `Services/`),
 use it; do not modify it. If a shared type genuinely needs to change, stop and say so rather than

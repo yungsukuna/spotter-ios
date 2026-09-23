@@ -10,7 +10,7 @@ An iOS app for tracking calories, workouts and water in one place.
   routines, and progress charts.
 - **Water** — manual logging with quick-add presets.
 
-iPhone only, iOS 18+. No accounts, no subscription, no third-party dependencies.
+iPhone only, iOS 26+. No accounts, no subscription, no third-party dependencies.
 
 ---
 
