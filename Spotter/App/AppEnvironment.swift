@@ -35,7 +35,7 @@ enum AppConfiguration {
     /// identify themselves, and anonymous traffic can be blocked.
     static func openFoodFactsUserAgent(contact: String) -> String {
         let trimmed = contact.trimmingCharacters(in: .whitespacesAndNewlines)
-        let contactPart = trimmed.isEmpty ? "github.com/yungsukuna/tally-ios" : trimmed
+        let contactPart = trimmed.isEmpty ? "github.com/yungsukuna/spotter-ios" : trimmed
         return "Spotter/\(appVersion) (\(contactPart))"
     }
 }
