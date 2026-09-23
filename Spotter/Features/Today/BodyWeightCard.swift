@@ -79,6 +79,7 @@ struct BodyWeightCard: View {
                     .foregroundStyle(Theme.Colors.secondaryText)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .spotterCard()
     }
 

@@ -39,6 +39,7 @@ struct WaterSummaryCard: View {
 
             Spacer()
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .spotterCard()
     }
 }
