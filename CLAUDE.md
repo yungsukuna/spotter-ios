@@ -1,4 +1,4 @@
-# Tally — working notes
+# Spotter — working notes
 
 iOS calorie / workout / water tracker. Swift 6, SwiftUI, SwiftData, iOS 18 minimum.
 Read `README.md` first for the architecture overview.
@@ -31,7 +31,7 @@ use it; do not modify it. If a shared type genuinely needs to change, stop and s
 changing it.
 
 **Do not add `@Model` types.** The schema is fixed and complete in `Core/Models/`. Every model must be
-registered in `TallySchema.models`, and a type added without that fails at runtime, not compile time.
+registered in `SpotterSchema.models`, and a type added without that fails at runtime, not compile time.
 
 ## Conventions
 
@@ -58,13 +58,13 @@ and forced not-found / offline failures. Build and preview against it.
 
 ## Tests
 
-Swift Testing (`@Test`, `#expect`, `#require`), not XCTest. Put tests in `TallyTests/`, mirroring the
+Swift Testing (`@Test`, `#expect`, `#require`), not XCTest. Put tests in `SpotterTests/`, mirroring the
 source layout.
 
 Test the logic, not the layout: nutrient maths, unit conversion, 1RM and volume, PR detection, JSON
 decoding, state machines. Do not write snapshot or UI tests.
 
-Use `TallySchema.makeContainer(inMemory: true)` for anything touching SwiftData. `@MainActor` on the
+Use `SpotterSchema.makeContainer(inMemory: true)` for anything touching SwiftData. `@MainActor` on the
 suite.
 
 ## Previews
@@ -74,7 +74,7 @@ Every view gets a `#Preview`. The standard form:
 ```swift
 #Preview {
     SomeView()
-        .modelContainer(TallySchema.previewContainer())
+        .modelContainer(SpotterSchema.previewContainer())
         .environment(\.appEnvironment, .preview())
 }
 ```

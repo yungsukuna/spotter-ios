@@ -1,6 +1,6 @@
 # Roadmap
 
-Where Tally is going, in order. Read `README.md` and `CLAUDE.md` first for how the app is built today.
+Where Spotter is going, in order. Read `README.md` and `CLAUDE.md` first for how the app is built today.
 
 The rule for this document: **nothing in Phase 3 starts until Phases 1 and 2 are done and the app has
 been used day-to-day on a real phone.** Social features multiply every rough edge in the single-player
@@ -15,7 +15,7 @@ about closing that gap.
 
 ### Needed to run it
 
-- **Simulator:** nothing extra. `brew install xcodegen && xcodegen generate && open Tally.xcodeproj`, pick
+- **Simulator:** nothing extra. `brew install xcodegen && xcodegen generate && open Spotter.xcodeproj`, pick
   an iPhone simulator, Run.
 - **Your own iPhone:** a signing team. Don't set it in Xcode's Signing tab — `xcodegen generate` wipes it
   on every regenerate. Put it in the gitignored `Secrets.xcconfig` instead (already included by
@@ -62,7 +62,7 @@ the app gets used every day.
    screen and a smoothed trend chart is the thing calorie trackers are ultimately judged on.
 2. **Backup and export.** Everything is local-only today; deleting the app deletes the history. A JSON
    export via `ShareLink` is cheap insurance. Longer-term, turn on CloudKit private sync (see the note in
-   `TallySchema` — the unique constraint on `FoodItem.barcode` has to go first).
+   `SpotterSchema` — the unique constraint on `FoodItem.barcode` has to go first).
 3. **Faster food logging.** Copy yesterday's meal / a whole meal from any day, saved "meals" (a group
    of foods logged in one tap), and quick-add calories without a food record.
 4. **Goal helper.** Compute a calorie and protein target from weight, height, age, activity and goal
@@ -85,7 +85,7 @@ HealthKit stays out of scope unless that decision is revisited.
 
 ### The idea
 
-Tally becomes something you can share with people who keep you honest. You choose **who** can see your
+Spotter becomes something you can share with people who keep you honest. You choose **who** can see your
 profile and **how much** they can see. Friends check that you trained today; a coach sees every set and
 every meal of every client and can comment on them.
 

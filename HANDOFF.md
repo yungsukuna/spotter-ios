@@ -14,7 +14,7 @@ takes 4–5 minutes per run.
 That shapes the whole workflow. The loop is: read the CI annotations (and the test log, once the
 build is passing), fix, push, wait, repeat. Do not guess at a fix and move on — push it and confirm.
 
-Kai has a Mac, so the faster loop is available if he's at it: `xcodegen generate && open Tally.xcodeproj`
+Kai has a Mac, so the faster loop is available if he's at it: `xcodegen generate && open Spotter.xcodeproj`
 surfaces every error at once instead of one CI round-trip at a time. **Ask before assuming he'll do
 that** — he hasn't opened the project in Xcode yet at time of writing.
 
@@ -51,7 +51,7 @@ product bugs:
 Those tests are fixed. Remaining handoff items also landed in the same push:
 
 - Food-tab `DayTotals` now uses `effectiveKcal`, matching the Today tab.
-- `TallyApp` wires `OpenFoodFactsClient` + `USDAFoodDataCentralClient` through `CompositeFoodDataSource`.
+- `SpotterApp` wires `OpenFoodFactsClient` + `USDAFoodDataCentralClient` through `CompositeFoodDataSource`.
 - `AddFoodView` presents `BarcodeScannerView`, looks up via `CachingFoodRepository`, and routes to
   the portion picker or `CustomFoodEditorView` (`ScannedProductLookup`).
 - `actions/checkout@v5`.
@@ -94,7 +94,7 @@ CoreData noise — see below) and the test log, not `gh run view --log-failed` a
 
 ### 2. Workouts compiled once, still never rendered
 
-`Tally/Features/Workouts/` compiled on run `35490081444`. Charts, optional-enum pickers, and
+`Spotter/Features/Workouts/` compiled on run `35490081444`. Charts, optional-enum pickers, and
 `EditButton` / `.onMove` did not fail the build. That is a compile bar, not a visual one. Nothing in
 this app has ever been seen on a device or simulator UI.
 
@@ -152,7 +152,7 @@ what RepCount does. The eight non-negotiables are listed in `CLAUDE.md`; the fir
 - **Public repo**, which is what makes the macOS CI runners free.
 - **SwiftData, not Core Data.** CloudKit private sync is a later flag; note that enabling it requires
   removing the `@Attribute(.unique)` on `FoodItem.barcode`, since CloudKit forbids unique constraints.
-- **App named Tally**, bundle `com.yungsukuna.tally`.
+- **App named Spotter**, bundle `com.yungsukuna.spotter`.
 
 ---
 

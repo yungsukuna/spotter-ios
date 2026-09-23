@@ -72,7 +72,7 @@ struct WidgetSnapshot: Codable, Equatable, Sendable {
 enum WidgetSnapshotStore {
     /// Must match the App Group entitlement on both the app and widget
     /// extension targets.
-    static let appGroupID = "group.com.yungsukuna.tally"
+    static let appGroupID = "group.com.yungsukuna.spotter"
 
     private static let defaultsKey = "widgetSnapshot"
 
