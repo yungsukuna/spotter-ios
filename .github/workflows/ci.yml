@@ -13,7 +13,7 @@ concurrency:
 jobs:
   build-and-test:
     name: Build & Test
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 30
 
     steps:
@@ -23,6 +23,11 @@ jobs:
         run: |
           xcodebuild -version
           swift --version
+          XCODE_MAJOR="$(xcodebuild -version | head -1 | awk '{print $2}' | cut -d. -f1)"
+          if [ "$XCODE_MAJOR" -lt 26 ]; then
+            echo "::error::Xcode 26 or later is required, found $(xcodebuild -version | head -1)"
+            exit 1
+          fi
 
       - name: Install tools
         run: brew install xcodegen xcbeautify
