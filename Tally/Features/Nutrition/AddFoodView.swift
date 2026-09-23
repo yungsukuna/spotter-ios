@@ -3,7 +3,7 @@ import SwiftUI
 
 /// Which section of the add-food screen is showing.
 private enum AddFoodTab: String, CaseIterable, Identifiable {
-    case search, recent, frequent, myFoods
+    case search, recent, frequent, myFoods, meals
 
     var id: String { rawValue }
 
@@ -13,6 +13,7 @@ private enum AddFoodTab: String, CaseIterable, Identifiable {
         case .recent: "Recent"
         case .frequent: "Frequent"
         case .myFoods: "My Foods"
+        case .meals: "Meals"
         }
     }
 }
@@ -102,6 +103,8 @@ struct AddFoodView: View {
                     foodList(frequentFoods, emptyTitle: "No frequent foods", emptyIcon: "chart.bar")
                 case .myFoods:
                     myFoodsTab
+                case .meals:
+                    SavedMealsList(meal: meal, onLogged: { dismiss() })
                 }
             }
             .navigationTitle("Add to \(meal.displayName)")

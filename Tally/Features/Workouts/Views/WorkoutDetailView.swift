@@ -15,10 +15,17 @@ struct WorkoutDetailView: View {
                 summary
             }
             ForEach(workout.orderedExercises) { entry in
-                Section(entry.displayName) {
+                Section {
+                    if let notes = entry.notes, !notes.isEmpty {
+                        Text(notes)
+                            .font(Theme.Typography.caption)
+                            .foregroundStyle(Theme.Colors.secondaryText)
+                    }
                     ForEach(entry.orderedSets) { set in
                         setRow(set)
                     }
+                } header: {
+                    Text(entry.displayName)
                 }
             }
         }

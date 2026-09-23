@@ -10,6 +10,9 @@ enum ExerciseHistoryLookup {
         var id: UUID
         var date: Date
         var sets: [StrengthMath.CompletedSet]
+        /// That session's note for this exercise (`WorkoutExercise.notes`),
+        /// if one was left.
+        var notes: String?
     }
 
     /// Finished sessions that logged `exercise`, most recent first.
@@ -31,7 +34,7 @@ enum ExerciseHistoryLookup {
                 }
                 let completed = entry.orderedSets.compactMap(\.completedSetValue)
                 guard !completed.isEmpty else { return nil }
-                return PastSession(id: workout.id, date: workout.startedAt, sets: completed)
+                return PastSession(id: workout.id, date: workout.startedAt, sets: completed, notes: entry.notes)
             }
             .sorted { $0.date > $1.date }
     }

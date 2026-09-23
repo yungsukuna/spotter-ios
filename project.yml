@@ -43,6 +43,17 @@ targets:
       Release: Config/App.xcconfig
     sources:
       - path: Tally
+      # Code compiled into both the app and the widget extension.
+      - path: Shared
+    dependencies:
+      # Embeds the widget / Live Activity extension in the app.
+      - target: TallyWidgets
+    entitlements:
+      path: Tally/Tally.entitlements
+      properties:
+        # Lets the Home Screen widget read the daily snapshot the app writes.
+        com.apple.security.application-groups:
+          - group.com.yungsukuna.tally
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.yungsukuna.tally
@@ -63,11 +74,52 @@ targets:
           - UIInterfaceOrientationPortrait
         UIUserInterfaceStyle: Automatic
         ITSAppUsesNonExemptEncryption: false
+        # Rest-timer Live Activity on the Lock Screen and Dynamic Island.
+        NSSupportsLiveActivities: true
         # Shown in the iOS camera permission prompt when the barcode scanner opens.
         NSCameraUsageDescription: Tally uses the camera to scan barcodes on food packaging so it can look up nutrition information.
         # Injected from Config/App.xcconfig, which optionally includes the
         # gitignored Secrets.xcconfig. Empty when no key is configured.
         USDAAPIKey: $(USDA_API_KEY)
+
+  # Home Screen widget and the rest-timer Live Activity. The one deliberate
+  # project.yml change from docs/PHASE2-PLAN.md, Feature 8.
+  TallyWidgets:
+    type: app-extension
+    platform: iOS
+    configFiles:
+      # So DEVELOPMENT_TEAM from Secrets.xcconfig reaches the extension too.
+      Debug: Config/App.xcconfig
+      Release: Config/App.xcconfig
+    sources:
+      - path: TallyWidgets
+      - path: Shared
+      # Pure-Foundation / SwiftUI files reused as-is. Nothing that touches
+      # SwiftData or UIApplication may be listed here.
+      - path: Tally/Core/Design/Theme.swift
+      - path: Tally/Core/Utils/UnitConverter.swift
+      - path: Tally/Core/Utils/DayKey.swift
+      - path: Tally/Core/Models/Enums.swift
+    entitlements:
+      path: TallyWidgets/TallyWidgets.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.yungsukuna.tally
+    info:
+      path: TallyWidgets/Info.plist
+      properties:
+        CFBundleDisplayName: Tally
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.yungsukuna.tally.widgets
+        PRODUCT_NAME: TallyWidgets
+        TARGETED_DEVICE_FAMILY: "1"
+        SWIFT_UPCOMING_FEATURE_STRICT_CONCURRENCY: YES
+        SKIP_INSTALL: YES
 
   TallyTests:
     type: bundle.unit-test

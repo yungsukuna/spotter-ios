@@ -8,6 +8,7 @@ import SwiftUI
 /// belongs to a different workstream.
 struct WorkoutSummaryCard: View {
     @Query(sort: \Workout.startedAt, order: .reverse) private var workouts: [Workout]
+    @Query private var cardioEntries: [CardioEntry]
 
     let weightUnit: WeightUnit
 
@@ -17,6 +18,26 @@ struct WorkoutSummaryCard: View {
 
     private var mostRecentFinished: Workout? {
         workouts.first { !$0.isInProgress }
+    }
+
+    /// Today's cardio sessions, for the summary line below. **Not** rolled
+    /// into any calorie total on this card or anywhere else — cardio kcal
+    /// does not count against the calorie budget (Decision 4).
+    private var todaysCardio: [CardioEntry] {
+        let todayKey = DayKey.today()
+        return cardioEntries.filter { $0.dayKey == todayKey }
+    }
+
+    private var todaysCardioSummary: String? {
+        guard !todaysCardio.isEmpty else { return nil }
+        let totalSeconds = todaysCardio.reduce(0) { $0 + $1.durationSeconds }
+        let minutes = Int((totalSeconds / 60).rounded())
+
+        let knownCalories = todaysCardio.compactMap(\.calories)
+        let calorieText = knownCalories.isEmpty ? nil : "~\(Format.energy(knownCalories.reduce(0, +), includeUnit: false)) kcal"
+
+        let parts = ["\(minutes) min", calorieText].compactMap { $0 }
+        return "Cardio: \(parts.joined(separator: " · "))"
     }
 
     var body: some View {
@@ -47,6 +68,12 @@ struct WorkoutSummaryCard: View {
                     .foregroundStyle(Theme.Colors.secondaryText)
             } else {
                 Text("No workouts yet. Start one from the Workouts tab.")
+                    .font(Theme.Typography.caption)
+                    .foregroundStyle(Theme.Colors.secondaryText)
+            }
+
+            if let todaysCardioSummary {
+                Text(todaysCardioSummary)
                     .font(Theme.Typography.caption)
                     .foregroundStyle(Theme.Colors.secondaryText)
             }

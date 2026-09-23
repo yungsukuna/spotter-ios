@@ -9,13 +9,18 @@ import UIKit
 /// exists to support this one.
 struct ActiveWorkoutView: View {
     @Bindable var workout: Workout
+    /// Owned by `WorkoutsHomeView`, not this view: navigating back here mid
+    /// rest must not destroy the controller, or the pending notification /
+    /// Live Activity would be orphaned. See "Must change first" #3 in
+    /// `docs/PHASE2-PLAN.md`.
+    var restTimer: RestTimerController
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
     @State private var settings: UserSettings?
-    @State private var restTimer = RestTimerController()
     @State private var showingExercisePicker = false
+    @State private var showingCardioSheet = false
     @State private var showingDiscardConfirm = false
     @State private var historyExercise: Exercise?
     @State private var statsExercise: Exercise?
@@ -28,6 +33,8 @@ struct ActiveWorkoutView: View {
                         entry: entry,
                         workout: workout,
                         weightUnit: weightUnit,
+                        setEffortDisplay: settings?.setEffortDisplay ?? .off,
+                        barbellWeightKG: settings?.barbellWeightKG,
                         bracketPosition: SupersetGrouping.bracketPosition(for: entry, in: workout),
                         canGroupWithNext: hasNextExercise(after: entry),
                         priorCompletedSets: priorCompletedSets(for: entry.exercise),
@@ -50,6 +57,20 @@ struct ActiveWorkoutView: View {
                 }
                 .buttonStyle(.bordered)
                 .padding(.horizontal, Theme.Layout.cardPadding)
+
+                // A "finisher" logged from inside the session without leaving
+                // it — uses the same sheet `WorkoutsHomeView` presents. It
+                // does not attach to `workout`; see `CardioEntrySheet`.
+                Button {
+                    showingCardioSheet = true
+                } label: {
+                    Label("Log Cardio", systemImage: "figure.run")
+                        .frame(maxWidth: .infinity)
+                        .frame(minHeight: Theme.Layout.minimumTapTarget)
+                }
+                .buttonStyle(.bordered)
+                .padding(.horizontal, Theme.Layout.cardPadding)
+                .padding(.top, Theme.Spacing.sm)
             }
             .padding(.vertical, Theme.Spacing.lg)
         }
@@ -76,6 +97,9 @@ struct ActiveWorkoutView: View {
             ExercisePickerView { exercise in
                 workout.addExercise(exercise)
             }
+        }
+        .sheet(isPresented: $showingCardioSheet) {
+            CardioEntrySheet()
         }
         .sheet(item: $historyExercise) { exercise in
             ExerciseHistorySheet(exercise: exercise, excludingWorkoutID: workout.id)
@@ -134,11 +158,20 @@ struct ActiveWorkoutView: View {
         return WorkoutStatsCalculator.completedSets(for: exercise).filter { $0.workoutID != workout.id }
     }
 
-    private func handleSetCompleted() {
-        guard let settings, settings.autoStartRestTimer else { return }
+    private func handleSetCompleted(_ entry: WorkoutExercise) {
+        guard let settings else { return }
+        guard let duration = RestDuration.resolve(
+            exerciseOverride: entry.exercise?.restTimerSeconds,
+            globalDefault: settings.restTimerSeconds,
+            autoStart: settings.autoStartRestTimer
+        ) else {
+            return
+        }
         restTimer.start(
-            duration: TimeInterval(settings.restTimerSeconds),
-            notify: settings.restTimerNotifications
+            duration: duration,
+            notify: settings.restTimerNotifications,
+            exerciseName: entry.exercise?.name,
+            workoutName: workout.name
         )
     }
 
@@ -168,7 +201,7 @@ struct ActiveWorkoutView: View {
     let workout = WorkoutsPreviewData.makeInProgressWorkout(in: container.mainContext)
 
     return NavigationStack {
-        ActiveWorkoutView(workout: workout)
+        ActiveWorkoutView(workout: workout, restTimer: RestTimerController())
     }
     .modelContainer(container)
     .environment(\.appEnvironment, .preview())

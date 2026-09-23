@@ -11,6 +11,7 @@ struct WeeklyStripCard: View {
     @Query private var diaryEntries: [DiaryEntry]
     @Query private var waterEntries: [WaterEntry]
     @Query private var workouts: [Workout]
+    @Query private var cardioEntries: [CardioEntry]
 
     let kcalGoal: Double
     let waterGoalML: Double
@@ -26,12 +27,15 @@ struct WeeklyStripCard: View {
         let relevantDiary = diaryEntries.filter { keySet.contains($0.dayKey) }
         let relevantWater = waterEntries.filter { keySet.contains($0.dayKey) }
         let relevantWorkouts = workouts.filter { keySet.contains($0.dayKey) }
+        let relevantCardio = cardioEntries.filter { keySet.contains($0.dayKey) }
 
         let nutrientsByDay = Dictionary(grouping: relevantDiary, by: \.dayKey)
             .mapValues { $0.map(\.nutrients) }
         let waterByDay = Dictionary(grouping: relevantWater, by: \.dayKey)
             .mapValues { WaterAggregation.totalML($0.map(\.record)) }
-        let workoutDayKeys = Set(relevantWorkouts.map(\.dayKey))
+        // A cardio-only day still counts as trained (Decision 5), so the
+        // workout marker's day-key set is the union of both.
+        let workoutDayKeys = Set(relevantWorkouts.map(\.dayKey)).union(relevantCardio.map(\.dayKey))
 
         return DashboardAggregation.weekGlances(
             keys: dayKeys,

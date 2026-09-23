@@ -52,11 +52,107 @@ struct PersistenceTests {
         context.insert(BodyMeasurement(type: .bodyWeight, value: 82.5))
         context.insert(UserSettings())
 
+        let savedMeal = SavedMeal(
+            name: "Breakfast Combo",
+            items: [
+                SavedMealItem(
+                    order: 0,
+                    foodID: food.id,
+                    foodName: food.name,
+                    quantity: 1,
+                    servingLabel: "100 g",
+                    servingGramWeight: 100,
+                    nutrientsSnapshot: Nutrients(kcal: 100, proteinG: 10)
+                ),
+                SavedMealItem(
+                    order: 1,
+                    foodID: nil,
+                    foodName: "Mystery Item",
+                    quantity: 1,
+                    servingLabel: "1 serving",
+                    servingGramWeight: 50,
+                    nutrientsSnapshot: Nutrients(kcal: 80)
+                ),
+            ]
+        )
+        context.insert(savedMeal)
+
         // Saving is what actually validates the schema.
         try context.save()
 
         #expect(try context.fetchCount(FetchDescriptor<FoodItem>()) == 1)
         #expect(try context.fetchCount(FetchDescriptor<SetEntry>()) == 1)
+    }
+
+    @Test("SavedMeal items round-trip, preserving nil macros")
+    func savedMealItemsRoundTrip() throws {
+        let context = try makeContext()
+
+        let meal = SavedMeal(
+            name: "Post-Workout",
+            items: [
+                SavedMealItem(
+                    order: 1,
+                    foodName: "Protein Shake",
+                    quantity: 1,
+                    servingLabel: "1 scoop",
+                    servingGramWeight: 30,
+                    // No macros known — must stay nil, not become 0, through
+                    // the SQLite-backed round trip.
+                    nutrientsSnapshot: Nutrients(kcal: 120)
+                ),
+                SavedMealItem(
+                    order: 0,
+                    foodName: "Banana",
+                    quantity: 1,
+                    servingLabel: "1 medium",
+                    servingGramWeight: 118,
+                    nutrientsSnapshot: Nutrients(kcal: 105, proteinG: 1.3, carbsG: 27, fatG: 0.4)
+                ),
+            ]
+        )
+        context.insert(meal)
+        try context.save()
+
+        let refetched = try #require(try context.fetch(FetchDescriptor<SavedMeal>()).first)
+
+        // orderedItems must read back in `order`, not insertion order.
+        #expect(refetched.orderedItems.map(\.foodName) == ["Banana", "Protein Shake"])
+
+        let shake = try #require(refetched.orderedItems.first { $0.foodName == "Protein Shake" })
+        #expect(shake.nutrientsSnapshot.kcal == 120)
+        #expect(shake.nutrientsSnapshot.proteinG == nil)
+        #expect(shake.nutrientsSnapshot.carbsG == nil)
+        #expect(shake.nutrientsSnapshot.fatG == nil)
+
+        #expect(refetched.totalNutrients.kcal == 225)
+        // Protein is known on only one item; totalling still treats the
+        // other's nil as "no data" rather than corrupting the sum, per
+        // `Nutrients.+`.
+        #expect(refetched.totalNutrients.proteinG == 1.3)
+    }
+
+    @Test("Exercise.cardioEntries links when a CardioEntry references it")
+    func cardioEntriesLinkToExercise() throws {
+        let context = try makeContext()
+
+        let exercise = Exercise(name: "Treadmill Run", isCardio: true)
+        context.insert(exercise)
+        let entry = CardioEntry(exerciseName: "Treadmill Run", durationSeconds: 1200, exercise: exercise)
+        context.insert(entry)
+        try context.save()
+
+        let refetched = try #require(try context.fetch(FetchDescriptor<Exercise>()).first)
+        #expect(refetched.cardioEntries.map(\.id) == [entry.id])
+
+        // Deleting the exercise must not delete the cardio history — the
+        // relationship is nullify, matching workoutEntries.
+        context.delete(exercise)
+        try context.save()
+
+        #expect(try context.fetchCount(FetchDescriptor<CardioEntry>()) == 1)
+        let survivor = try #require(try context.fetch(FetchDescriptor<CardioEntry>()).first)
+        #expect(survivor.exercise == nil)
     }
 
     @Test("Settings are a singleton, created on first access")

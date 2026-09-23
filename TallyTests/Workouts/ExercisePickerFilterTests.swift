@@ -62,6 +62,26 @@ struct ExercisePickerFilterTests {
         #expect(results.count == exercises.count)
     }
 
+    @Test("Cardio exercises are excluded by default")
+    func cardioExcludedByDefault() {
+        var exercises = sampleExercises()
+        exercises.append(Exercise(name: "Treadmill", equipment: .cardio, muscleGroup: .cardio, isCardio: true))
+
+        let results = ExercisePickerFilter.filtered(exercises, query: "")
+        #expect(!results.contains { $0.isCardio })
+        #expect(results.count == exercises.count - 1)
+    }
+
+    @Test("Cardio exercises are included when asked")
+    func cardioIncludedWhenAsked() {
+        var exercises = sampleExercises()
+        exercises.append(Exercise(name: "Treadmill", equipment: .cardio, muscleGroup: .cardio, isCardio: true))
+
+        let results = ExercisePickerFilter.filtered(exercises, query: "", includeCardio: true)
+        #expect(results.count == exercises.count)
+        #expect(results.contains { $0.isCardio })
+    }
+
     @Test("Grouping by region sorts sections and exercises by name")
     func groupingSortsSectionsAndExercises() {
         let exercises = sampleExercises()

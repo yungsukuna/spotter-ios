@@ -129,6 +129,7 @@ struct FoodDetailView: View {
             meal: meal
         )
         modelContext.insert(entry)
+        WidgetSnapshotWriter.refresh(in: modelContext)
         dismiss()
     }
 

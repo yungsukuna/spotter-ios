@@ -52,6 +52,37 @@ final class UserSettings {
     /// requires apps to identify themselves; see `OpenFoodFactsClient`.
     var openFoodFactsContact: String = ""
 
+    // MARK: - Goal calculator inputs
+    //
+    // Every field here is optional; nil means "unset". Storing the inputs
+    // (rather than just the resulting goals) lets "recalculate" stay a
+    // one-tap action as the weight trend moves. Treat these as sensitive
+    // health data for Phase 3's access levels.
+
+    /// Centimetres. Goal calculator.
+    var heightCM: Double?
+    /// A year, not a full date — less sensitive than a birthdate while still
+    /// giving the calculator an age.
+    var birthYear: Int?
+    /// Raw value of ``BiologicalSex``. Nil uses the calculator's midpoint
+    /// constant rather than assuming male or female.
+    var sexRaw: String?
+    /// Raw value of ``ActivityLevel``.
+    var activityLevelRaw: String?
+    /// Raw value of ``WeightGoal``.
+    var weightGoalRaw: String?
+    /// Size of the weekly weight change, in kg/week, e.g. 0.5.
+    var weeklyRateKG: Double?
+    /// Protein target in grams per kilogram of body weight. Nil means 1.6.
+    var proteinGPerKG: Double?
+    /// Goal line shown on the weight chart.
+    var goalWeightKG: Double?
+    /// Barbell weight used by the plate calculator. Nil means 20 kg / 45 lb,
+    /// depending on ``weightUnit``.
+    var barbellWeightKG: Double?
+    /// Raw value of ``SetEffortDisplay``. Nil means `.off`.
+    var setEffortDisplayRaw: String?
+
     var createdAt: Date = Date()
 
     init(id: UUID = UUID(), createdAt: Date = Date()) {
@@ -72,6 +103,27 @@ final class UserSettings {
     var oneRepMaxFormula: OneRepMaxFormula {
         get { OneRepMaxFormula(rawValue: oneRepMaxFormulaRaw) ?? .epley }
         set { oneRepMaxFormulaRaw = newValue.rawValue }
+    }
+
+    var sex: BiologicalSex? {
+        get { sexRaw.flatMap(BiologicalSex.init(rawValue:)) }
+        set { sexRaw = newValue?.rawValue }
+    }
+
+    var activityLevel: ActivityLevel? {
+        get { activityLevelRaw.flatMap(ActivityLevel.init(rawValue:)) }
+        set { activityLevelRaw = newValue?.rawValue }
+    }
+
+    var weightGoal: WeightGoal? {
+        get { weightGoalRaw.flatMap(WeightGoal.init(rawValue:)) }
+        set { weightGoalRaw = newValue?.rawValue }
+    }
+
+    /// `.off` when unset, so callers never have to unwrap this one.
+    var setEffortDisplay: SetEffortDisplay {
+        get { setEffortDisplayRaw.flatMap(SetEffortDisplay.init(rawValue:)) ?? .off }
+        set { setEffortDisplayRaw = newValue.rawValue }
     }
 
     /// Macro goals as a nutrition panel, for comparing against day totals.

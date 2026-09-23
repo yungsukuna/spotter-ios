@@ -22,8 +22,16 @@ struct TodayView: View {
                 VStack(spacing: Theme.Spacing.lg) {
                     NutritionSummaryCard(goal: settings.nutritionGoal)
                     WaterSummaryCard(goalML: settings.dailyWaterGoalML, unit: settings.volumeUnit)
+                    StreakSummaryCard(waterGoalML: settings.dailyWaterGoalML)
                     WorkoutSummaryCard(weightUnit: settings.weightUnit)
+                    BodyWeightCard(weightUnit: settings.weightUnit, goalWeightKG: settings.goalWeightKG)
                     WeeklyStripCard(kcalGoal: settings.dailyKcalGoal, waterGoalML: settings.dailyWaterGoalML)
+                    WeeklySummaryCard(
+                        kcalGoal: settings.dailyKcalGoal,
+                        proteinGoalG: settings.dailyProteinGoalG,
+                        waterGoalML: settings.dailyWaterGoalML,
+                        weightUnit: settings.weightUnit
+                    )
                 }
                 .padding(Theme.Spacing.lg)
             }

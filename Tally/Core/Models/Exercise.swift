@@ -28,11 +28,22 @@ final class Exercise {
     /// A cardio exercise logs duration/distance instead of sets and reps.
     var isCardio: Bool = false
 
+    /// Per-exercise rest timer override, in seconds. Nil means "use
+    /// `UserSettings.restTimerSeconds`"; 0 means "no rest timer".
+    var restTimerSeconds: Int?
+
     /// Every logged instance of this exercise, across all workouts. Nullify
     /// rather than cascade: removing an exercise must never silently delete
     /// training history.
     @Relationship(deleteRule: .nullify, inverse: \WorkoutExercise.exercise)
     var workoutEntries: [WorkoutExercise] = []
+
+    /// Every cardio session logged against this exercise. Nullify rather than
+    /// cascade, for the same reason as ``workoutEntries``. CloudKit requires
+    /// every relationship to declare an inverse; this is that inverse for
+    /// `CardioEntry.exercise`.
+    @Relationship(deleteRule: .nullify, inverse: \CardioEntry.exercise)
+    var cardioEntries: [CardioEntry] = []
 
     init(
         id: UUID = UUID(),
@@ -42,6 +53,7 @@ final class Exercise {
         isCustom: Bool = false,
         isCardio: Bool = false,
         notes: String? = nil,
+        restTimerSeconds: Int? = nil,
         createdAt: Date = Date()
     ) {
         self.id = id
@@ -51,6 +63,7 @@ final class Exercise {
         self.isCustom = isCustom
         self.isCardio = isCardio
         self.notes = notes
+        self.restTimerSeconds = restTimerSeconds
         self.createdAt = createdAt
     }
 

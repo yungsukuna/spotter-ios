@@ -193,3 +193,89 @@ enum OneRepMaxFormula: String, CaseIterable, Codable, Identifiable, Sendable {
     var id: String { rawValue }
     var displayName: String { self == .epley ? "Epley" : "Brzycki" }
 }
+
+/// Biological sex, as used by the Mifflin–St Jeor BMR formula. Optional and
+/// nil-defaultable on `UserSettings` — see the note there on treating these
+/// fields as sensitive health data.
+enum BiologicalSex: String, CaseIterable, Codable, Identifiable, Sendable {
+    case male, female
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .male: "Male"
+        case .female: "Female"
+        }
+    }
+}
+
+/// Activity level for the goal calculator's TDEE multiplier.
+enum ActivityLevel: String, CaseIterable, Codable, Identifiable, Sendable {
+    case sedentary, light, moderate, veryActive, extraActive
+
+    var id: String { rawValue }
+
+    /// TDEE = BMR × this.
+    var multiplier: Double {
+        switch self {
+        case .sedentary: 1.2
+        case .light: 1.375
+        case .moderate: 1.55
+        case .veryActive: 1.725
+        case .extraActive: 1.9
+        }
+    }
+
+    var displayName: String {
+        switch self {
+        case .sedentary: "Sedentary"
+        case .light: "Lightly Active"
+        case .moderate: "Moderately Active"
+        case .veryActive: "Very Active"
+        case .extraActive: "Extra Active"
+        }
+    }
+
+    /// One-line description shown under each option in the picker.
+    var detail: String {
+        switch self {
+        case .sedentary: "Little or no exercise"
+        case .light: "Light exercise 1–3 days a week"
+        case .moderate: "Moderate exercise 3–5 days a week"
+        case .veryActive: "Hard exercise 6–7 days a week"
+        case .extraActive: "Very hard exercise or a physical job"
+        }
+    }
+}
+
+/// Direction of the goal calculator's target: lose, maintain, or gain weight.
+enum WeightGoal: String, CaseIterable, Codable, Identifiable, Sendable {
+    case lose, maintain, gain
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .lose: "Lose Weight"
+        case .maintain: "Maintain Weight"
+        case .gain: "Gain Weight"
+        }
+    }
+}
+
+/// Whether the set row shows perceived-effort as RPE, as RIR, or not at all.
+/// Default is `.off`, which keeps the set row as uncluttered as possible.
+enum SetEffortDisplay: String, CaseIterable, Codable, Identifiable, Sendable {
+    case off, rpe, rir
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .off: "Off"
+        case .rpe: "RPE"
+        case .rir: "RIR"
+        }
+    }
+}

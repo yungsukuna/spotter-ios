@@ -14,10 +14,17 @@ struct SetRowView: View {
     var displayLabel: String
     var placeholder: PreviousPerformance.SetPlaceholder?
     var weightUnit: WeightUnit
+    /// Whether — and how — to show the effort menu. `.off` hides it entirely,
+    /// keeping the row as uncluttered as RepCount's by default.
+    var setEffortDisplay: SetEffortDisplay
+    /// Whether this set's exercise is a barbell lift, which is what gates the
+    /// "Plate Calculator" context menu item.
+    var isBarbell: Bool
     var isPersonalRecord: Bool
     var onComplete: () -> Void
     var onAddDropSet: () -> Void
     var onToggleWarmup: () -> Void
+    var onShowPlateCalculator: () -> Void
     var onDelete: () -> Void
 
     @State private var weightText: String = ""
@@ -45,6 +52,10 @@ struct SetRowView: View {
                 .font(Theme.Typography.setValue)
                 .multilineTextAlignment(.center)
                 .frame(minWidth: 40, minHeight: Theme.Layout.minimumTapTarget)
+
+            if setEffortDisplay != .off {
+                effortMenu
+            }
 
             if set.isWarmup {
                 Text("W")
@@ -74,9 +85,34 @@ struct SetRowView: View {
         .contextMenu {
             Button("Add Drop Set", systemImage: "arrow.turn.down.right", action: onAddDropSet)
             Button(set.isWarmup ? "Unmark Warm-up" : "Mark as Warm-up", systemImage: "flame", action: onToggleWarmup)
+            if isBarbell {
+                Button("Plate Calculator", systemImage: "scalemass", action: onShowPlateCalculator)
+            }
             Button("Delete Set", systemImage: "trash", role: .destructive, action: onDelete)
         }
         .onAppear(perform: seedTextIfNeeded)
+    }
+
+    /// Compact menu between the reps field and the completion check: shows
+    /// the current RPE/RIR (or just "RPE"/"RIR" when unset) and offers 6…10
+    /// in half-point steps, plus Clear.
+    private var effortMenu: some View {
+        Menu {
+            ForEach(SetEffort.selectableValues, id: \.self) { rpe in
+                Button(SetEffort.formatted(rpe)) { set.rpe = rpe }
+            }
+            Divider()
+            Button("Clear") { set.rpe = nil }
+        } label: {
+            Text(effortButtonText)
+                .font(Theme.Typography.caption)
+                .foregroundStyle(Theme.Colors.secondaryText)
+        }
+        .frame(minHeight: Theme.Layout.minimumTapTarget)
+    }
+
+    private var effortButtonText: String {
+        SetEffort.label(rpe: set.rpe, display: setEffortDisplay) ?? setEffortDisplay.displayName
     }
 
     private var weightPlaceholderText: String {
@@ -133,10 +169,13 @@ struct SetRowView: View {
             displayLabel: "1",
             placeholder: .init(weightKG: 60, reps: 8, isWarmup: false, isDropSet: false),
             weightUnit: .kilograms,
+            setEffortDisplay: .rpe,
+            isBarbell: true,
             isPersonalRecord: false,
             onComplete: {},
             onAddDropSet: {},
             onToggleWarmup: {},
+            onShowPlateCalculator: {},
             onDelete: {}
         )
     }

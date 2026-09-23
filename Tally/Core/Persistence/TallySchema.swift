@@ -13,6 +13,7 @@ enum TallySchema {
         // Nutrition
         FoodItem.self,
         DiaryEntry.self,
+        SavedMeal.self,
         // Water
         WaterEntry.self,
         // Training
