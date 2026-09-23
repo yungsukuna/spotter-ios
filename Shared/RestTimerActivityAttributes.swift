@@ -2,7 +2,7 @@ import ActivityKit
 import Foundation
 
 /// Shared between the app (which starts/updates/ends the Live Activity) and
-/// the `TallyWidgets` extension (which renders it). Kept in `Shared/` — the
+/// the `SpotterWidgets` extension (which renders it). Kept in `Shared/` — the
 /// only folder compiled into both targets — so the two sides can never drift
 /// on the shape of the content state.
 ///

@@ -1,4 +1,6 @@
-# Tally
+# Spotter
+
+Spotter is a code name; the final App Store name is undecided.
 
 An iOS app for tracking calories, workouts and water in one place.
 
@@ -23,7 +25,7 @@ brew install xcodegen
 The `.xcodeproj` is **not** committed — it is generated from [`project.yml`](project.yml):
 
 ```bash
-xcodegen generate && open Tally.xcodeproj
+xcodegen generate && open Spotter.xcodeproj
 ```
 
 Re-run `xcodegen generate` after pulling changes that add files. Because source paths in `project.yml`
@@ -33,7 +35,7 @@ regenerate.
 ### Running the tests
 
 ```bash
-xcodebuild test -project Tally.xcodeproj -scheme Tally -destination 'platform=iOS Simulator,name=iPhone 16'
+xcodebuild test -project Spotter.xcodeproj -scheme Spotter -destination 'platform=iOS Simulator,name=iPhone 16'
 ```
 
 CI runs the same thing on every push, resolving an available simulator automatically via
@@ -61,7 +63,7 @@ and put your key in it. `Secrets.xcconfig` is gitignored. The value travels
 ## Architecture
 
 ```
-Tally/
+Spotter/
 ├─ App/          Entry point, tab shell, dependency injection
 ├─ Core/
 │  ├─ Models/        SwiftData @Model types

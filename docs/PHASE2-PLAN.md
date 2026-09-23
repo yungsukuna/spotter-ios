@@ -1,4 +1,4 @@
-# Tally — Phase 2 implementation plan (8 features)
+# Spotter — Phase 2 implementation plan (8 features)
 
 **Status: implemented in PR #2 (CI green). The recommended answer was taken for every decision below. Nothing has been checked on a device yet.**
 
@@ -48,7 +48,7 @@ Only four things change the schema: saved meals, per-exercise rest time, the goa
 11. **RPE or RIR?** → **Store RPE only** (it already exists). A display setting chooses Off / RPE / RIR, with RIR = 10 − RPE. **Default is Off**, which keeps the set row as uncluttered as RepCount's.
 12. **Widget data path: shared SwiftData store, or a JSON snapshot?** → **Snapshot in App Group `UserDefaults`, and don't move the store.** Only move the store if you want an interactive "log water" widget. If you do, decide **now**, before any real data exists (see Feature 8).
 13. **Apple developer account type.** Free personal teams may not support the App Groups capability (please check; I'm not certain). If they don't, the Home Screen widget needs the paid account. The Live Activity does **not** need an App Group.
-14. **Add the missing inverse `Exercise.cardioEntries` in the schema step?** → **Yes.** CloudKit requires every relationship to have an inverse, and `CardioEntry.exercise` (in `Tally/Core/Models/Exercise.swift`) currently has none.
+14. **Add the missing inverse `Exercise.cardioEntries` in the schema step?** → **Yes.** CloudKit requires every relationship to have an inverse, and `CardioEntry.exercise` (in `Spotter/Core/Models/Exercise.swift`) currently has none.
 
 ---
 
@@ -65,7 +65,7 @@ Only four things change the schema: saved meals, per-exercise rest time, the goa
 
 ## The consolidated schema step (one PR, one review)
 
-**Files:** `Tally/Core/Models/UserSettings.swift`, `Tally/Core/Models/Exercise.swift`, new `Tally/Core/Models/SavedMeal.swift`, `Tally/Core/Models/Enums.swift`, `Tally/Core/Persistence/TallySchema.swift`, `TallyTests/Core/PersistenceTests.swift`.
+**Files:** `Spotter/Core/Models/UserSettings.swift`, `Spotter/Core/Models/Exercise.swift`, new `Spotter/Core/Models/SavedMeal.swift`, `Spotter/Core/Models/Enums.swift`, `Spotter/Core/Persistence/SpotterSchema.swift`, `SpotterTests/Core/PersistenceTests.swift`.
 
 **`Exercise` (existing model)**
 
@@ -91,7 +91,7 @@ Only four things change the schema: saved meals, per-exercise rest time, the goa
 
 Each `...Raw` field gets a computed typed accessor, following the existing pattern (for example `weightUnit`).
 
-**New enums** in `Tally/Core/Models/Enums.swift`, all `String, CaseIterable, Codable, Identifiable, Sendable`: `BiologicalSex`, `ActivityLevel` (with `multiplier`), `WeightGoal`, `SetEffortDisplay`.
+**New enums** in `Spotter/Core/Models/Enums.swift`, all `String, CaseIterable, Codable, Identifiable, Sendable`: `BiologicalSex`, `ActivityLevel` (with `multiplier`), `WeightGoal`, `SetEffortDisplay`.
 
 **New model: `SavedMeal`**
 
@@ -114,7 +114,7 @@ struct SavedMealItem: Codable, Hashable, Identifiable, Sendable {
 }
 ```
 
-The items are a value array, not a child `@Model`. That means one new entity instead of two, no inverse on `FoodItem`, and nothing new to be orphaned. `order` is kept so the items read correctly through an `orderedItems` accessor, matching the convention. Register it in `TallySchema.models` under `// Nutrition`.
+The items are a value array, not a child `@Model`. That means one new entity instead of two, no inverse on `FoodItem`, and nothing new to be orphaned. `order` is kept so the items read correctly through an `orderedItems` accessor, matching the convention. Register it in `SpotterSchema.models` under `// Nutrition`.
 
 **Not changing:**
 - `SetEntry.rpe` stays as is.
@@ -153,10 +153,10 @@ The items are a value array, not a child `@Model`. That means one new entity ins
 **Data:** none. `BodyMeasurement` already stores kg and a `dayKey`.
 
 **Files**
-- `Tally/Features/Body/BodyWeightTrend.swift`: pure logic.
-- `Tally/Features/Body/BodyWeightView.swift`, `Tally/Features/Body/WeighInSheet.swift`, `Tally/Features/Body/BodyWeightChart.swift`.
-- `Tally/Features/Today/BodyWeightCard.swift`, and `Tally/Features/Today/TodayView.swift`, which adds the card.
-- `TallyTests/Body/BodyWeightTrendTests.swift`.
+- `Spotter/Features/Body/BodyWeightTrend.swift`: pure logic.
+- `Spotter/Features/Body/BodyWeightView.swift`, `Spotter/Features/Body/WeighInSheet.swift`, `Spotter/Features/Body/BodyWeightChart.swift`.
+- `Spotter/Features/Today/BodyWeightCard.swift`, and `Spotter/Features/Today/TodayView.swift`, which adds the card.
+- `SpotterTests/Body/BodyWeightTrendTests.swift`.
 
 **Pure logic** (`BodyWeightTrend`), working on `struct WeighIn { dayKey: String; kg: Double }` so tests need no container:
 1. `dailyMeans([WeighIn]) -> [(dayKey, kg)]`, sorted by key.
@@ -187,11 +187,11 @@ The items are a value array, not a child `@Model`. That means one new entity ins
 **Goal:** get everything out as one versioned JSON file, and get it back in without duplicates.
 
 **UX:** a new "Data" section in `SettingsView`:
-- **"Export Backup"** builds the file into `FileManager.default.temporaryDirectory` as `Tally-Backup-yyyy-MM-dd.json`, then shows `ShareLink(item: url)`. A URL is `Transferable`, so no invented API is involved.
+- **"Export Backup"** builds the file into `FileManager.default.temporaryDirectory` as `Spotter-Backup-yyyy-MM-dd.json`, then shows `ShareLink(item: url)`. A URL is `Transferable`, so no invented API is involved.
 - **"Import Backup…"** uses `.fileImporter(isPresented:allowedContentTypes: [.json])`. Wrap the read in `url.startAccessingSecurityScopedResource()` / `stopAccessing…`. Show a summary before committing ("Adds 412 diary entries, 37 workouts… Skips 12 already present") behind a confirmation.
 - The footer warns that the file contains health data in plain text.
 
-**Format** (`TallyBackup`, Codable):
+**Format** (`SpotterBackup`, Codable):
 - Top level: `formatVersion: Int = 1`, `exportedAt`, `appVersion`.
 - One array per model, using **DTO structs separate from the `@Model`s**, so a model refactor doesn't silently change the file format.
 - Relationships are stored as UUID references: `DiaryEntry.foodID`, `WorkoutExercise.workoutID/exerciseID`, `SetEntry.workoutExerciseID`, `RoutineExercise.routineID/exerciseID`, `Workout.sourceRoutineID`, `CardioEntry.exerciseID`.
@@ -210,11 +210,11 @@ The items are a value array, not a child `@Model`. That means one new entity ins
 3. Save once at the end. On any error, roll back.
 
 **Files**
-- `Tally/Services/Backup/BackupFormat.swift`: DTOs plus `formatVersion`.
-- `Tally/Services/Backup/BackupExporter.swift`: `ModelContext` → `TallyBackup`.
-- `Tally/Services/Backup/BackupImporter.swift`: returns an `ImportReport`, with a dry-run mode for the summary.
-- `Tally/Features/Settings/DataManagementSection.swift`, plus a one-line addition in `SettingsView.swift`.
-- `TallyTests/Services/BackupRoundTripTests.swift`.
+- `Spotter/Services/Backup/BackupFormat.swift`: DTOs plus `formatVersion`.
+- `Spotter/Services/Backup/BackupExporter.swift`: `ModelContext` → `SpotterBackup`.
+- `Spotter/Services/Backup/BackupImporter.swift`: returns an `ImportReport`, with a dry-run mode for the summary.
+- `Spotter/Features/Settings/DataManagementSection.swift`, plus a one-line addition in `SettingsView.swift`.
+- `SpotterTests/Services/BackupRoundTripTests.swift`.
 
 Backup is cross-cutting (it reads every model), so it goes in `Services/`, not in one feature folder.
 
@@ -230,7 +230,7 @@ Backup is cross-cutting (it reads every model), so it goes in `Services/`, not i
 - Exporting runs on the main actor. That's fine at this data scale.
 - The file grows with history, but even 10 years of history is only a few MB.
 
-**Later: CloudKit private sync.** It's a one-line `cloudKitDatabase:` change in `TallySchema.makeContainer`, but it's blocked by:
+**Later: CloudKit private sync.** It's a one-line `cloudKitDatabase:` change in `SpotterSchema.makeContainer`, but it's blocked by:
 1. `@Attribute(.unique)` on `FoodItem.barcode` (replace it with dedupe on insert, as `FoodDetailView.resolvedFoodItem` already half-does).
 2. Every relationship needing an inverse. Fixed by the schema step, which adds `Exercise.cardioEntries`.
 3. **To verify:** whether CloudKit wants to-many relationships declared optional (`[T]?`). If so, that's a model-wide change.
@@ -242,13 +242,13 @@ Backup is cross-cutting (it reads every model), so it goes in `Services/`, not i
 
 ## Feature 3 — Faster food logging (M total)
 
-All three parts touch `Tally/Features/Nutrition/`. Ship them as three PRs.
+All three parts touch `Spotter/Features/Nutrition/`. Ship them as three PRs.
 
 ### 3a. Quick add (S), no schema change
 
 - **UX:** each meal section in `DiaryDayContent` gets a second row, "Quick Add", next to "Add Food". It opens `QuickAddSheet` with a name (default "Quick add"), kcal (required), and optional protein, carbs and fat.
 - **Storage:** a `DiaryEntry` with `food: nil`, `quantity: 1`, `ServingSize(label: "Quick add", gramWeight: 0)`, and `nutrients` built from the fields. **An empty macro field becomes `nil`, never `0`**, and fibre, sugar and so on stay nil.
-- **Detection:** add a computed `DiaryEntry.isQuickAdd { food == nil && servingGramWeight == 0 }` in `Tally/Features/Nutrition/QuickAdd.swift` as an extension. The model file doesn't change. `servingGramWeight == 0` can't come from a food (every serving has a weight).
+- **Detection:** add a computed `DiaryEntry.isQuickAdd { food == nil && servingGramWeight == 0 }` in `Spotter/Features/Nutrition/QuickAdd.swift` as an extension. The model file doesn't change. `servingGramWeight == 0` can't come from a food (every serving has a weight).
 - **Editing:** `EditDiaryEntryView` branches. Quick-add entries edit kcal and macros directly instead of by quantity ratio.
 - **Files:** `QuickAdd.swift` (`QuickAdd.makeNutrients(kcalText:proteinText:…) -> Nutrients?` plus `isQuickAdd`), `QuickAddSheet.swift`, `NutritionDiaryView.swift`, `EditDiaryEntryView.swift`.
 - **Tests:**
@@ -269,7 +269,7 @@ All three parts touch `Tally/Features/Nutrition/`. Ship them as three PRs.
   - Add `i` seconds per item to keep the source order.
   - Copy the snapshot fields verbatim (`nutrients`, `servingLabel`, `quantity`, `brandName`) and keep the `food` link. It must **not** re-read nutrition from `FoodItem`.
   - Call `food?.markUsed()`.
-- **Files:** `Tally/Features/Nutrition/MealCopy.swift`, `CopyMealSheet.swift`, `NutritionDiaryView.swift`.
+- **Files:** `Spotter/Features/Nutrition/MealCopy.swift`, `CopyMealSheet.swift`, `NutritionDiaryView.swift`.
 - **Tests:**
   - The resulting `dayKey` equals the target key, including on a DST-transition day in `Pacific/Auckland`.
   - Order is preserved.
@@ -284,7 +284,7 @@ All three parts touch `Tally/Features/Nutrition/`. Ship them as three PRs.
   - Log one from `AddFoodView`, which gets a new `AddFoodTab.meals` ("Meals"). Each row shows the name, item count and total kcal. One tap logs every item into the current meal and dismisses. Swiping reveals Edit and Delete.
   - `SavedMealEditorView` lets you rename, remove items and change quantities. No nested food search in v1.
 - **Logging rule:** for each item, if `foodID` resolves to a live `FoodItem`, use `DiaryEntry(logging:quantity:serving:meal:)`, which gets current nutrition. Otherwise build a `DiaryEntry` from `nutrientsSnapshot`. Either way the diary snapshots at log time, as the convention requires. Then bump `SavedMeal.useCount` and `lastUsedAt`.
-- **Files:** `Tally/Features/Nutrition/SavedMealLogging.swift` (pure: `items(from entries:)`, `entries(for meal:resolvingFoods:[UUID: FoodItem]…)`), `SavedMealsList.swift`, `SavedMealEditorView.swift`, `AddFoodView.swift` (new tab), `NutritionDiaryView.swift`.
+- **Files:** `Spotter/Features/Nutrition/SavedMealLogging.swift` (pure: `items(from entries:)`, `entries(for meal:resolvingFoods:[UUID: FoodItem]…)`), `SavedMealsList.swift`, `SavedMealEditorView.swift`, `AddFoodView.swift` (new tab), `NutritionDiaryView.swift`.
 - **Tests:**
   - Snapshot → items → entries round-trips.
   - The deleted-food fallback uses the snapshot.
@@ -320,7 +320,7 @@ All three parts touch `Tally/Features/Nutrition/`. Ship them as three PRs.
 - **Floor:** the target is never below `max(BMR, 1200)`. Surface a note when it's clamped.
 - **Protein** = g/kg × kg. **Fat** = 0.8 g/kg (never below 20% of kcal). **Carbs** = remaining kcal ÷ 4, clamped at ≥ 0. Round kcal to the nearest 10 and grams to whole numbers.
 
-**Files:** `Tally/Features/Nutrition/GoalCalculator.swift`, `Tally/Features/Nutrition/GoalCalculatorView.swift`, `GoalsEditorView.swift` (button), `Tally/Features/Settings/SettingsView.swift` (button), `TallyTests/Nutrition/GoalCalculatorTests.swift`.
+**Files:** `Spotter/Features/Nutrition/GoalCalculator.swift`, `Spotter/Features/Nutrition/GoalCalculatorView.swift`, `GoalsEditorView.swift` (button), `Spotter/Features/Settings/SettingsView.swift` (button), `SpotterTests/Nutrition/GoalCalculatorTests.swift`.
 
 **Tests:**
 - Male, 80 kg, 180 cm, age 30 → BMR 1780. Female → 1614. Unspecified → 1697.
@@ -364,11 +364,11 @@ All three parts touch `Tally/Features/Nutrition/`. Ship them as three PRs.
 **Data:** no new fields. `CardioEntry` has everything. The schema step adds the inverse only.
 
 **Files:**
-- `Tally/Features/Workouts/Logic/CardioCalories.swift`.
-- `Tally/Features/Workouts/Views/CardioEntrySheet.swift`, `Tally/Features/Workouts/Views/CardioHistoryRow.swift`.
+- `Spotter/Features/Workouts/Logic/CardioCalories.swift`.
+- `Spotter/Features/Workouts/Views/CardioEntrySheet.swift`, `Spotter/Features/Workouts/Views/CardioHistoryRow.swift`.
 - Changes to `WorkoutsHomeView.swift`, `ActiveWorkoutView.swift`, `ExercisePickerView.swift`, `ExercisePickerFilter.swift`, `WorkoutHistoryListView.swift`.
 - Today: `WorkoutSummaryCard.swift`, `WeeklyStripCard.swift`, `DashboardAggregation.swift` (`weekGlances` takes the union set; the signature is unchanged).
-- Tests: `TallyTests/Workouts/CardioCaloriesTests.swift`, plus an extension to `ExercisePickerFilterTests`.
+- Tests: `SpotterTests/Workouts/CardioCaloriesTests.swift`, plus an extension to `ExercisePickerFilterTests`.
 
 **Tests:**
 - The MET formula.
@@ -425,7 +425,7 @@ Every one of these must keep the **one scrollable logging screen**: no sub-scree
 - The scheme is empty bar ×10, 40% ×5, 60% ×3, 80% ×2. Each is rounded to the smallest loadable increment (2.5 kg or 5 lb, via `PlateCalculator`), dropping duplicates and anything ≤ the bar except the first.
 - Inserted as `SetEntry(isWarmup: true)` **before** the first working set, renumbering like `DropSetInsertion`.
 - **Must fix first:** positional placeholder matching (see "Must change first" #5). Change `PreviousPerformance` to match per kind: the k-th warm-up to the previous k-th warm-up, the k-th working set to the previous k-th working set, and a drop set to its parent's drop sets in order. Update `ExerciseLogCardView.placeholder(for:)` to match.
-- **Files:** `Tally/Features/Workouts/Logic/WarmupGenerator.swift`, `PlateCalculator.swift`, `RestDuration.swift`, `SetEffort.swift`, `Views/PlateCalculatorSheet.swift`, plus changes to `ExerciseLogCardView.swift`, `SetRowView.swift`, `ActiveWorkoutView.swift`, `PreviousPerformance.swift`, and `SettingsView.swift` (effort display, bar weight).
+- **Files:** `Spotter/Features/Workouts/Logic/WarmupGenerator.swift`, `PlateCalculator.swift`, `RestDuration.swift`, `SetEffort.swift`, `Views/PlateCalculatorSheet.swift`, plus changes to `ExerciseLogCardView.swift`, `SetRowView.swift`, `ActiveWorkoutView.swift`, `PreviousPerformance.swift`, and `SettingsView.swift` (effort display, bar weight).
 - **Tests:**
   - 100 kg → [20×10, 40×5, 60×3, 80×2].
   - Rounding in lb.
@@ -465,7 +465,7 @@ Every one of these must keep the **one scrollable logging screen**: no sub-scree
 
 **Time zones:** a `dayKey` is frozen at log time in the device's zone. Travelling can create a gap or a double day. Accept that and document it: the streak runs over keys, not instants, which keeps it deterministic and reproducible server-side in Phase 3.
 
-**Files:** `Tally/Features/Today/StreakCalculator.swift`, `Tally/Features/Today/WeeklySummary.swift`, `Tally/Features/Today/StreakSummaryCard.swift`, `Tally/Features/Today/WeeklySummaryCard.swift`, `TodayView.swift`, tests in `TallyTests/Today/`.
+**Files:** `Spotter/Features/Today/StreakCalculator.swift`, `Spotter/Features/Today/WeeklySummary.swift`, `Spotter/Features/Today/StreakSummaryCard.swift`, `Spotter/Features/Today/WeeklySummaryCard.swift`, `TodayView.swift`, tests in `SpotterTests/Today/`.
 
 **Tests:**
 - An empty set gives 0.
@@ -491,57 +491,57 @@ Every one of these must keep the **one scrollable logging screen**: no sub-scree
 
 ```yaml
 targets:
-  Tally:
+  Spotter:
     # existing keys unchanged, plus:
     sources:
-      - path: Tally
+      - path: Spotter
       - path: Shared                      # new: code compiled into app + extension
     dependencies:
-      - target: TallyWidgets              # embeds the extension
+      - target: SpotterWidgets              # embeds the extension
     info:
       properties:
         # existing properties unchanged, plus:
         NSSupportsLiveActivities: true
     entitlements:                         # widget step only (see note)
-      path: Tally/Tally.entitlements
+      path: Spotter/Spotter.entitlements
       properties:
         com.apple.security.application-groups:
-          - group.com.yungsukuna.tally
+          - group.com.yungsukuna.spotter
 
-  TallyWidgets:
+  SpotterWidgets:
     type: app-extension
     platform: iOS
     configFiles:                          # needed so DEVELOPMENT_TEAM from Secrets.xcconfig reaches the extension
       Debug: Config/App.xcconfig
       Release: Config/App.xcconfig
     sources:
-      - path: TallyWidgets
+      - path: SpotterWidgets
       - path: Shared
-      - path: Tally/Core/Design/Theme.swift   # reuse tokens without moving the file
+      - path: Spotter/Core/Design/Theme.swift   # reuse tokens without moving the file
     info:
-      path: TallyWidgets/Info.plist
+      path: SpotterWidgets/Info.plist
       properties:
-        CFBundleDisplayName: Tally
+        CFBundleDisplayName: Spotter
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     entitlements:                         # widget step only
-      path: TallyWidgets/TallyWidgets.entitlements
+      path: SpotterWidgets/SpotterWidgets.entitlements
       properties:
         com.apple.security.application-groups:
-          - group.com.yungsukuna.tally
+          - group.com.yungsukuna.spotter
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.yungsukuna.tally.widgets
-        PRODUCT_NAME: TallyWidgets
+        PRODUCT_BUNDLE_IDENTIFIER: com.yungsukuna.spotter.widgets
+        PRODUCT_NAME: SpotterWidgets
         TARGETED_DEVICE_FAMILY: "1"
         SWIFT_UPCOMING_FEATURE_STRICT_CONCURRENCY: YES
         SKIP_INSTALL: YES
 ```
 
 Also:
-- Add `TallyWidgets/Info.plist` to `.gitignore` (it's generated, like `Tally/Info.plist`).
+- Add `SpotterWidgets/Info.plist` to `.gitignore` (it's generated, like `Spotter/Info.plist`).
 - Either commit the generated `.entitlements` files or gitignore them. Recommend committing them.
 
 **Note:**
@@ -556,7 +556,7 @@ Also:
 
 **Design:**
 - **`Shared/RestTimerActivityAttributes.swift`:** `struct RestTimerActivityAttributes: ActivityAttributes`, with `ContentState: Codable, Hashable { endDate: Date; exerciseName: String? }` and a static `workoutName`.
-- **New protocol in `Tally/Features/Workouts/Logic/RestTimerActivityPresenting.swift`,** alongside `RestTimerNotifying`:
+- **New protocol in `Spotter/Features/Workouts/Logic/RestTimerActivityPresenting.swift`,** alongside `RestTimerNotifying`:
   - `begin(endDate:exerciseName:)`, `update(endDate:)`, `end()`. Synchronous signatures, for the same testability reason given in `RestTimerNotifying`.
   - `NoopRestTimerActivityPresenter` as the **default** in `RestTimerController.init`, so existing tests and previews don't touch ActivityKit.
   - `MockRestTimerActivityPresenter` for tests.
@@ -569,13 +569,13 @@ Also:
   - Checks `ActivityAuthorizationInfo().areActivitiesEnabled`.
   - Calls `Activity.request(attributes:content:pushType: nil)` with `ActivityContent(state:staleDate: endDate)`.
   - Keeps the current `Activity` in a small actor.
-  - `end` also sweeps `Activity<RestTimerActivityAttributes>.activities`, which kills orphans from an app kill. Also sweep once at launch from `TallyApp`.
+  - `end` also sweeps `Activity<RestTimerActivityAttributes>.activities`, which kills orphans from an app kill. Also sweep once at launch from `SpotterApp`.
   - **Reuse the per-identifier generation-counter pattern from PR #1's `SystemRestTimerNotifier`**, so a fast "complete set, then skip" can't leave an activity behind. Tests with the mock assert call order, not the async side.
-- **Extension UI in `TallyWidgets/RestTimerLiveActivity.swift`:**
+- **Extension UI in `SpotterWidgets/RestTimerLiveActivity.swift`:**
   - `ActivityConfiguration(for: RestTimerActivityAttributes.self)` with a Lock Screen view: `Text(timerInterval: Date()...endDate, countsDown: true)`, `ProgressView(timerInterval:countsDown:)` and the exercise name.
   - Dynamic Island compact, minimal and expanded regions.
   - When `context.isStale`, show "Rest over".
-  - `TallyWidgets/TallyWidgetsBundle.swift` holds `@main WidgetBundle`.
+  - `SpotterWidgets/SpotterWidgetsBundle.swift` holds `@main WidgetBundle`.
 
 **Known limitation:** once the timer ends with the app suspended, the countdown stops at 0:00 and shows stale. It can't be ended without push notifications (out of scope). It gets ended on the next foreground or the next set.
 
@@ -594,18 +594,18 @@ Also:
 ### 8b. Home Screen widget (M)
 
 **Recommendation (Decision 12): a snapshot, not a shared store.**
-- **`Shared/WidgetSnapshot.swift`:** `struct WidgetSnapshot: Codable { dayKey; kcalConsumed: Double?; kcalGoal; waterML; waterGoalML; volumeUnitRaw; generatedAt }`. It's stored as `Data` in `UserDefaults(suiteName: "group.com.yungsukuna.tally")`.
-- **`Tally/App/WidgetSnapshotWriter.swift`:** builds the snapshot using `DashboardAggregation` / `WaterAggregation`, then calls `WidgetCenter.shared.reloadAllTimelines()`.
-  - Called from `TallyApp` on `scenePhase` → `.background`.
+- **`Shared/WidgetSnapshot.swift`:** `struct WidgetSnapshot: Codable { dayKey; kcalConsumed: Double?; kcalGoal; waterML; waterGoalML; volumeUnitRaw; generatedAt }`. It's stored as `Data` in `UserDefaults(suiteName: "group.com.yungsukuna.spotter")`.
+- **`Spotter/App/WidgetSnapshotWriter.swift`:** builds the snapshot using `DashboardAggregation` / `WaterAggregation`, then calls `WidgetCenter.shared.reloadAllTimelines()`.
+  - Called from `SpotterApp` on `scenePhase` → `.background`.
   - Also called after the known save points: `FoodDetailView.save`, the Water logging actions, quick add, copy and saved meals, and import. That's explicit call sites, not an invented save notification.
-- **Widget:** `TallyWidgets/DailyRemainingWidget.swift`, a `StaticConfiguration` with `.systemSmall`/`.systemMedium` and `.accessoryRectangular`/`.accessoryCircular` for the Lock Screen.
+- **Widget:** `SpotterWidgets/DailyRemainingWidget.swift`, a `StaticConfiguration` with `.systemSmall`/`.systemMedium` and `.accessoryRectangular`/`.accessoryCircular` for the Lock Screen.
   - Timeline entries at now and at the next local midnight.
   - **If `snapshot.dayKey != today`, render "0 of goal"** so yesterday's numbers never show after midnight.
   - If the suite is missing, render a placeholder.
 - **Tests (CI):** snapshot building from fixture entries (kcal uses `effectiveKcal`, nil stays nil), the stale-day rule, and Codable round-trip. **Device:** real refresh cadence, the midnight rollover, and the look.
 
 **If you want an interactive widget later (for example a "+250 ml" `AppIntent` button), the store has to move to the App Group.** Move it now, before real data exists:
-- In `TallySchema.makeContainer`, resolve `FileManager.default.containerURL(forSecurityApplicationGroupIdentifier:)`.
+- In `SpotterSchema.makeContainer`, resolve `FileManager.default.containerURL(forSecurityApplicationGroupIdentifier:)`.
 - **Fall back to the current default location when that returns nil.** It may be nil in unsigned CI or simulator builds; tests use in-memory stores anyway.
 - Before building the container, if `Application Support/default.store` exists and the group store doesn't, move `default.store`, `default.store-shm` and `default.store-wal` together. Do it once, and log it.
 - Then use `ModelConfiguration(schema:url:)` with the group URL.
@@ -631,4 +631,4 @@ Also:
 | 8a Live Activity | Controller→presenter calls, ContentState | Lock Screen, Dynamic Island, orphan cleanup |
 | 8b Widget | Snapshot build, stale-day rule | Refresh, midnight rollover, App Group signing |
 
-Every new view gets a `#Preview` using `TallySchema.previewContainer()` and `.environment(\.appEnvironment, .preview())`. For seeded weigh-ins, cardio and saved meals, add preview seeders in a new `Tally/Features/Body/BodyPreviewData.swift` and extend `WorkoutsPreviewData.swift`.
+Every new view gets a `#Preview` using `SpotterSchema.previewContainer()` and `.environment(\.appEnvironment, .preview())`. For seeded weigh-ins, cardio and saved meals, add preview seeders in a new `Spotter/Features/Body/BodyPreviewData.swift` and extend `WorkoutsPreviewData.swift`.
