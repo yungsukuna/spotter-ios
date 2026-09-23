@@ -22,7 +22,7 @@ that** — he hasn't opened the project in Xcode yet at time of writing.
 
 ## Current state
 
-Repo: **https://github.com/yungsukuna/tally-ios** (public), local at `C:\Users\Kai\Documents\GitHub\tally-ios`.
+Repo: **https://github.com/yungsukuna/spotter-ios** (public), local at `C:\Users\Kai\Documents\GitHub\tally-ios`.
 
 `gh` CLI is installed at `C:\Program Files\GitHub CLI\gh.exe` and authenticated as **yungsukuna** with
 `repo` + `workflow` scopes. **It is not on PATH in the Bash tool** — invoke it by full path:
